@@ -1,0 +1,151 @@
+# Architecture Decisions
+
+Decisions with the reasoning that produced them. Append new entries; do not rewrite
+history. When a decision is reversed, add a new entry that supersedes the old one and
+mark the old one superseded.
+
+Full design context for everything below:
+[`docs/superpowers/specs/2026-08-27-surveyall-design.md`](superpowers/specs/2026-08-27-surveyall-design.md).
+
+---
+
+## 2026-08-27 — Audience: public / broad distribution
+
+Surveys are published to anyone with a link; respondents need no account. Calendar
+scheduling is a companion capability the organiser uses for their own group.
+
+**Why:** chosen over private-group, workplace, and personal-project framings. It sets
+the hardest constraint in the product — the respondent path must work for a total
+stranger on a phone with zero friction — and everything downstream (identity, abuse
+control, privacy) follows from it.
+
+---
+
+## 2026-08-27 — v1 is a foundation cycle, plus a thin vertical slice
+
+The first cycle ships auth, schema and migrations, CI, and Vercel deploys — no
+user-facing feature. Added to that scope: one trivial end-to-end slice
+(`/api/v1/health` plus one page) that exercises both adapters.
+
+**Why:** the foundation was the owner's explicit choice. The slice was added because a
+foundation with no feature through it can be wrong without anyone noticing; the slice
+is proof of wiring, not a feature.
+
+---
+
+## 2026-08-27 — Web now, native later
+
+Responsive web only for the foreseeable cycles. The API and domain layer stay
+client-agnostic so a native client can be added without rework.
+
+**Why:** chosen over React Native/Expo now, PWA-only, and Flutter/native. Defers the
+mobile decision while committing to the shared-layer discipline that keeps it open.
+The cost of that discipline is small; the cost of retrofitting it is not.
+
+---
+
+## 2026-08-27 — Next.js (App Router) on Vercel + Supabase Postgres
+
+One TypeScript project. Route handlers under `/api/v1` expose a plain HTTP/JSON API;
+the web UI is Server Components over the same domain layer. Supabase supplies
+Postgres, Auth, and storage.
+
+**Why:** fastest path to a deployed, low-ops product for a solo two-machine project.
+Accepted costs: Vercel and Supabase lock-in, and RLS as a skill to learn.
+
+---
+
+## 2026-08-27 — Auth: Supabase Auth, Google OAuth + email magic link
+
+Google OAuth is the primary sign-in; email magic link is the fallback for people
+without a Google account. Authors authenticate; respondents need not.
+
+**Why:** both are built into Supabase Auth. Magic link avoids building password reset
+flows for little gain.
+
+---
+
+## 2026-08-27 — Repo shape: layered single app, not a monorepo
+
+`lib/domain/**` is pure TypeScript importing nothing from `next/*`, `react`, or
+`@supabase/*`. Server Components and `/api/v1` route handlers are two thin adapters
+above it. Enforced by an ESLint `no-restricted-imports` rule in CI.
+
+**Why:** the boundary that matters is domain-versus-transport, and a directory plus a
+lint rule buys that at a fraction of a Turborepo's cost on this project. `git mv
+lib/domain packages/domain` remains available if a native client becomes imminent —
+this door does not close.
+
+---
+
+## 2026-08-27 — Security: server-mediated, RLS as defence in depth
+
+All data access goes through the server via the domain layer. RLS policies are still
+written and tested, as a second wall rather than the only one.
+
+**Why:** the rejected alternative was handing the anon key to the public with RLS as
+the entire authorisation model. That fails when respondents are anonymous — rate
+limiting, dedupe, and response validation are server concerns and need a server.
+Server mediation also gives a future native client one contract instead of two access
+patterns to secure.
+
+**Consequence:** the service-role key must never reach the client bundle.
+
+---
+
+## 2026-08-27 — Identity is a spectrum, not anonymous-versus-not
+
+Respondents may answer anonymously or signed in. Signing in links the response to the
+account, puts it in a participation history, grants results access, and makes
+one-response-per-survey a real Postgres constraint. Anonymous responses get none of
+that and only best-effort duplicate control.
+
+**Why:** supersedes an earlier framing in this same session where respondents were
+strictly anonymous with no user FK. The spectrum creates an incentive to sign in
+rather than a wall, and yields a subset of responses with genuine integrity.
+
+**Consequence:** `survey_responses.user_id` is nullable; RLS handles both shapes.
+
+---
+
+## 2026-08-27 — Surveys and scheduling are separate domains
+
+Two domain modules sharing auth, the public-link mechanism, participation history,
+and abuse controls — not one engine with scheduling as a question type.
+
+**Why:** an earlier lean toward unifying them assumed scheduling meant discrete
+yes/no slots. It does not: it is a When2Meet-style painted availability grid, where a
+response is N cells, the aggregate is a per-cell density map, and the input is a drag
+gesture. Unifying would require a "question type" that ignores most of what a
+question is.
+
+---
+
+## 2026-08-27 — Survey options are a table, not JSON
+
+`question_options` rows with stable ids. The authoring API accepts a whole question as
+one JSON payload and reconciles it server-side in a transaction.
+
+**Why:** an option needs stable identity either way — storing option *text* in an
+answer means a rename splits the tally, storing an *index* means a reorder rewrites
+answers. Given ids are required, a table gives tallies as a plain `GROUP BY` with a
+`LEFT JOIN` (zero-count options for free) and a foreign key protecting answers. The
+whole-question diff keeps client ergonomics JSON-shaped. `jsonb` is still used where
+nothing is joined or grouped: `questions.config`.
+
+---
+
+## 2026-08-27 — Scheduling specifics
+
+- Grid granularity fixed at 30 minutes; not stored, so it can become a column later
+  without invalidating rows.
+- Cells attribute to people — hover or tap shows who is available. Anonymous
+  participants therefore supply a display name.
+- The author is just another participant row, so there is no privileged second write
+  path.
+- Slots stored as UTC `timestamptz`, always rendered in the viewer's local zone.
+  `author_timezone` is display reference only and never affects storage.
+- Availability writes replace the whole painted set — one idempotent write per paint
+  gesture instead of a stream of cell deltas.
+- Anonymous participants return via an opaque token in an httpOnly cookie scoped to
+  the event. No cookie means a second participant row, as in When2Meet.
