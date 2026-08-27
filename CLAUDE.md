@@ -42,12 +42,15 @@ session. Anything a future session needs must be written down and committed.
   systems — it can produce sync conflicts in `.git`. Sync through git, not the filesystem.
 - **Persist context in the repo, not in machine-local Claude memory.** Local memory directories do
   not travel between systems. Durable items go in committed files:
-  - Architecture and stack decisions (and the reasoning) → this file, or `docs/DECISIONS.md`.
+  - Architecture and stack decisions (and the reasoning) → `docs/DECISIONS.md`. Append-only:
+    reverse a decision by adding an entry that supersedes the old one, never by editing it.
+  - The design being built against → `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`.
+    A revised design is a new dated file, not an edit to the old one.
   - Commands, once tooling exists → the Repository state section above.
-  - Work in progress, open questions, and the next step → a committed session-handoff note
-    (e.g. `docs/STATUS.md`), updated at the end of each session.
-- **Start of session:** read this file and the handoff note before acting; `git log` since your last
-  entry tells you what the other system did.
+  - Work in progress, open questions, and the next step → `docs/STATUS.md`, rewritten at the
+    end of each session.
+- **Start of session:** read this file and `docs/STATUS.md` before acting; it names the commit
+  it was written at, so `git log <that-commit>..HEAD` tells you what the other system did since.
 - **End of session:** record what changed, what was verified, what is unfinished, and what decision
   is pending. Assume the next session has zero memory of this one.
 - `origin` is not under the local git user's (`asorkin@techinsights.com`) account. Assume

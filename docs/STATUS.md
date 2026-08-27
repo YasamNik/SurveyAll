@@ -1,11 +1,36 @@
 # Session handoff
 
-Updated at the end of every session. Assume the next session has zero memory of this
-one. Read this and `CLAUDE.md` before acting.
+**Read this first, before acting.** Then `CLAUDE.md`. Assume the next session has zero
+memory of the last one — nothing survives except what is committed here.
+
+### Where project knowledge lives
+
+| File | Lifecycle | What it is for |
+|---|---|---|
+| `docs/STATUS.md` (this file) | **Rewritten** each session | Where the project stands, what is next, what is blocked |
+| `docs/DECISIONS.md` | **Append-only — never rewrite** | Every decision and the reasoning behind it. Reversing a decision means adding a new entry that supersedes the old one, not editing it |
+| `docs/superpowers/specs/YYYY-MM-DD-*.md` | Frozen once written | The design itself. A revised design is a new dated file, not an edit |
+
+Conversation transcripts, `.remember/`, and machine-local Claude memory do **not**
+travel between machines. If it is not committed, the next session cannot see it.
+`.remember/` is intentionally left untracked: it self-ignores, holds machine-local
+runtime state (PIDs, session UUIDs, logs), and its notes are a lossy duplicate of this
+file.
+
+### Conventions settled in practice
+
+- **Pushing:** direct to `main` is fine for this project (owner's call, 2026-08-27),
+  despite the branch + PR default described in `CLAUDE.md`. Still confirm before
+  pushing anything beyond documentation.
+- **End of session:** rewrite this file, append to `DECISIONS.md` if anything was
+  decided, commit, push.
 
 ---
 
 ## Last updated: 2026-08-27 (design session, machine: asorkin / Windows)
+
+**State as of commit `3a95d44`.** Run `git log 3a95d44..HEAD` to see anything that
+landed after this entry was written.
 
 ### Where the project stands
 
