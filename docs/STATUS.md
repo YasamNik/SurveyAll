@@ -98,3 +98,10 @@ implementation plan → then implementation.
 ### Open questions
 
 None blocking. Deferred product items are listed as non-goals in the design doc.
+
+## Demo serving (2026-08-29)
+
+The app runs via `scripts/serve.sh` (build + `next start` on :3000) and is exposed
+publicly via `scripts/tunnel.sh` (a Cloudflare quick tunnel, Docker container
+`surveyall-tunnel`). The tunnel URL changes on restart — re-run `scripts/tunnel.sh`
+after any restart of the `cloudflared` container and re-share the new URL.
