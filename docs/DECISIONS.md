@@ -181,3 +181,46 @@ dashboard or Google Cloud Console — this path needs neither.
   callback workaround in section 7) no longer apply.
 - The Google OAuth client is still created later in Google Cloud Console; until
   then Auth.js magic link (or no auth) suffices for development.
+
+---
+
+## 2026-08-29 — Drizzle owns schema, migrations, and types
+
+Schema declared in TypeScript (`lib/db/schema.ts`); `drizzle-kit` generates SQL
+migrations committed to git; types derive from the schema; Drizzle is also the query
+layer. Migrations run programmatically at app start-up in production, via script
+locally.
+
+**Why:** the Supabase CLI had implicitly owned migrations and type generation — the
+2026-08-29 stack change left them unowned. Drizzle resolves all three with one tool
+and has a first-party Auth.js adapter. Rejected: plain SQL + `pg` (no types),
+Kysely + codegen (two tools for the same result).
+
+---
+
+## 2026-08-29 — Auth.js tables replace `profiles`; DB sessions; Mailpit for dev mail
+
+The Auth.js Drizzle adapter's `users`/`accounts`/`sessions`/`verification_tokens`
+tables come in; `profiles` is dropped and domain FKs point at `users.id` (it already
+carries name/email/image — no trigger needed). Sessions are database-backed. Magic
+link sends through Mailpit (a compose container) in dev and CI; the production
+provider (e.g. Resend free tier) is chosen at deploy time and listed as a deploy
+prerequisite.
+
+**Why:** magic link needs a mailer to work at all — Supabase's built-in one is gone.
+`profiles` next to Auth.js `users` would be a second copy of the same row. DB
+sessions are simpler and revocable on a single long-running server; JWT buys nothing
+here.
+
+---
+
+## 2026-08-29 — Ops floor: nightly pg_dump off-machine; Postgres never exposed
+
+Nightly `pg_dump`, short retention, copied off the server via rclone. Postgres gets
+no published port in production — only the app reaches it on the compose network,
+and only `cloudflared` faces the internet. One shared `pg.Pool`; no pgbouncer.
+
+**Why:** Supabase's backups are gone and a home server has none by default; the data
+is non-critical, so the floor is minimal — but written down deliberately, not
+omitted. The full revised design is
+[`2026-08-29-surveyall-design.md`](superpowers/specs/2026-08-29-surveyall-design.md).
