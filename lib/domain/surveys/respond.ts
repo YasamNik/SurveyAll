@@ -52,6 +52,7 @@ export function validateResponse(
             `multi_choice answer must be an array of option ids (question ${question.id})`,
           );
         }
+        const seen = new Set<string>();
         for (const optionId of value) {
           if (typeof optionId !== 'string') {
             throw new DomainError(
@@ -59,6 +60,10 @@ export function validateResponse(
               `multi_choice answer must be an array of option ids (question ${question.id})`,
             );
           }
+          if (seen.has(optionId)) {
+            throw new DomainError('INVALID_ANSWER', `duplicate option (question ${question.id})`);
+          }
+          seen.add(optionId);
           assertOptionBelongs(question, optionId);
           rows.push({ questionId: question.id, optionId, textValue: null, numberValue: null });
         }

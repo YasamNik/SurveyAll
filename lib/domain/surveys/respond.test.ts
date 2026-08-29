@@ -139,6 +139,15 @@ describe('validateResponse — throws INVALID_ANSWER', () => {
     expect(() => validateResponse([multiChoice], { q2: 'o3' })).toThrow(DomainError);
   });
 
+  it('multi_choice with duplicate option ids', () => {
+    expect(() => validateResponse([multiChoice], { q2: ['o3', 'o3'] })).toThrow(DomainError);
+    try {
+      validateResponse([multiChoice], { q2: ['o3', 'o3'] });
+    } catch (e) {
+      expect((e as DomainError).code).toBe('INVALID_ANSWER');
+    }
+  });
+
   it('rating below config.min', () => {
     expect(() => validateResponse([rating], { q4: 0 })).toThrow(DomainError);
   });
