@@ -26,16 +26,11 @@ export async function listSurveys(): Promise<(typeof surveys.$inferSelect)[]> {
   return db.select().from(surveys).orderBy(desc(surveys.createdAt));
 }
 
-export async function getSurveyWithQuestions(
-  id: string,
-): Promise<{ survey: typeof surveys.$inferSelect; questions: QuestionWithOptions[] } | null> {
-  const [survey] = await db.select().from(surveys).where(eq(surveys.id, id));
-  if (!survey) return null;
-
+export async function loadQuestionsWithOptions(surveyId: string): Promise<QuestionWithOptions[]> {
   const questionRows = await db
     .select()
     .from(questions)
-    .where(eq(questions.surveyId, id))
+    .where(eq(questions.surveyId, surveyId))
     .orderBy(questions.position);
 
   const optionRows = questionRows.length
@@ -58,7 +53,7 @@ export async function getSurveyWithQuestions(
     optionsByQuestion.set(opt.questionId, list);
   }
 
-  const withOptions: QuestionWithOptions[] = questionRows.map((q) => ({
+  return questionRows.map((q) => ({
     id: q.id,
     position: q.position,
     prompt: q.prompt,
@@ -67,6 +62,15 @@ export async function getSurveyWithQuestions(
     config: q.config as RatingConfig | null,
     options: optionsByQuestion.get(q.id) ?? [],
   }));
+}
+
+export async function getSurveyWithQuestions(
+  id: string,
+): Promise<{ survey: typeof surveys.$inferSelect; questions: QuestionWithOptions[] } | null> {
+  const [survey] = await db.select().from(surveys).where(eq(surveys.id, id));
+  if (!survey) return null;
+
+  const withOptions = await loadQuestionsWithOptions(id);
 
   return { survey, questions: withOptions };
 }

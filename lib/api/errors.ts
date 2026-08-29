@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { ZodError } from 'zod';
 import { DomainError, type DomainErrorCode } from '@/lib/domain/shared/errors';
 
 const STATUS_BY_CODE: Record<DomainErrorCode, number> = {
@@ -13,6 +14,9 @@ const STATUS_BY_CODE: Record<DomainErrorCode, number> = {
 export function toHttp(e: unknown): NextResponse {
   if (e instanceof DomainError) {
     return NextResponse.json({ error: e.code, message: e.message }, { status: STATUS_BY_CODE[e.code] });
+  }
+  if (e instanceof ZodError) {
+    return NextResponse.json({ error: 'BAD_REQUEST', details: e.flatten() }, { status: 400 });
   }
   console.error(e);
   return NextResponse.json({ error: 'INTERNAL' }, { status: 500 });
