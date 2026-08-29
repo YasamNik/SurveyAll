@@ -224,3 +224,22 @@ and only `cloudflared` faces the internet. One shared `pg.Pool`; no pgbouncer.
 is non-critical, so the floor is minimal — but written down deliberately, not
 omitted. The full revised design is
 [`2026-08-29-surveyall-design.md`](superpowers/specs/2026-08-29-surveyall-design.md).
+
+---
+
+## 2026-08-29 — Auth deferred; open demo via quick tunnel now
+
+Owner's call: build and publicly deliver the survey vertical **without auth** —
+authoring UI open to anyone with the URL, `author_id` NULL everywhere — and serve it
+ASAP from the Linux dev machine through a Cloudflare **quick tunnel**
+(`trycloudflare.com`, random URL, no domain or account needed). The Auth.js design
+stands unchanged; only its activation moves later. The named-tunnel/domain deploy on
+the home server remains the production target.
+
+**Why:** the owner is away from the machines holding Google/DNS/server access and
+wants something usable now. Data is throwaway; a random unlisted URL is acceptable
+exposure for an open demo. Quick tunnels need zero prerequisites.
+
+**Consequences:** the URL changes if the tunnel restarts; one-response-per-user
+constraints are dormant until auth lands; plan:
+[`plans/2026-08-29-open-demo-survey-vertical.md`](superpowers/plans/2026-08-29-open-demo-survey-vertical.md).
