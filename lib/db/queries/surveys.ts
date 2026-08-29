@@ -26,6 +26,14 @@ export async function listSurveys(): Promise<(typeof surveys.$inferSelect)[]> {
   return db.select().from(surveys).orderBy(desc(surveys.createdAt));
 }
 
+export async function countResponses(surveyId: string): Promise<number> {
+  const [{ responseCount }] = await db
+    .select({ responseCount: count() })
+    .from(surveyResponses)
+    .where(eq(surveyResponses.surveyId, surveyId));
+  return responseCount;
+}
+
 export async function loadQuestionsWithOptions(surveyId: string): Promise<QuestionWithOptions[]> {
   const questionRows = await db
     .select()
