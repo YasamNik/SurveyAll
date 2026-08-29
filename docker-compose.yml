@@ -1,0 +1,16 @@
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: surveyall
+      POSTGRES_PASSWORD: surveyall
+      POSTGRES_DB: surveyall
+    ports: ["5433:5432"]
+    volumes: [surveyall-pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U surveyall"]
+      interval: 2s
+      timeout: 2s
+      retries: 15
+volumes:
+  surveyall-pgdata:
