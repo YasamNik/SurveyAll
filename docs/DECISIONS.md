@@ -149,3 +149,35 @@ nothing is joined or grouped: `questions.config`.
   gesture instead of a stream of cell deltas.
 - Anonymous participants return via an opaque token in an httpOnly cookie scoped to
   the event. No cookie means a second participant row, as in When2Meet.
+
+---
+
+## 2026-08-29 — Postgres in Docker instead of Supabase; self-hosting first
+
+**Supersedes** the Supabase half of "Next.js (App Router) on Vercel + Supabase
+Postgres" (2026-08-27) and changes the auth mechanism of "Auth: Supabase Auth"
+(2026-08-27); the chosen providers (Google OAuth + magic link) stand.
+
+The database is Postgres running in a Docker container defined in the repo's
+`docker-compose.yml`, with the schema as plain SQL migrations. The app reads the
+database location from a single `DATABASE_URL` env var and knows nothing else about
+where Postgres lives — local container, the owner's home server, or a managed host
+are interchangeable by changing that one value. Auth moves from Supabase Auth to
+Auth.js (Google OAuth + email magic link, same providers as before). Hosting target:
+the owner's local server running the same docker-compose (app + Postgres), exposed
+via a free Cloudflare Tunnel; Cloudflare Workers (via OpenNext) remains an option
+for the app later, with the DB then living elsewhere.
+
+**Why:** a fourth Supabase project is not free on the owner's plan, and this data is
+not critical enough to justify the cost. A compose file travels with the repo across
+the two dev machines and deploys identically to the server, at $0 hosting cost.
+Decided 2026-08-29 with the owner working remotely, without access to the Supabase
+dashboard or Google Cloud Console — this path needs neither.
+
+**Consequences:**
+- RLS is no longer a second wall; server mediation (already the primary model) is
+  the authorisation model. The RLS entry's server-mediated design stands unchanged.
+- Vercel-specific assumptions in the design doc (preview deploys, the Google OAuth
+  callback workaround in section 7) no longer apply.
+- The Google OAuth client is still created later in Google Cloud Console; until
+  then Auth.js magic link (or no auth) suffices for development.
