@@ -1,4 +1,5 @@
-import { pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, boolean, integer, doublePrecision, jsonb, uniqueIndex, unique } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
 export const users = pgTable('users', {
   id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
@@ -7,3 +8,56 @@ export const users = pgTable('users', {
   image: text('image'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
+
+export const surveys = pgTable('surveys', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  authorId: text('author_id').references(() => users.id),
+  title: text('title').notNull(),
+  description: text('description'),
+  status: text('status', { enum: ['draft', 'published', 'closed'] }).notNull().default('draft'),
+  slug: text('slug').unique(),
+  showResultsToRespondents: boolean('show_results_to_respondents').notNull().default(false),
+  publishedAt: timestamp('published_at', { withTimezone: true }),
+  closedAt: timestamp('closed_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const questions = pgTable('questions', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  surveyId: text('survey_id').notNull().references(() => surveys.id, { onDelete: 'cascade' }),
+  position: integer('position').notNull(),
+  prompt: text('prompt').notNull(),
+  required: boolean('required').notNull().default(false),
+  type: text('type', { enum: ['single_choice', 'multi_choice', 'free_text', 'rating'] }).notNull(),
+  config: jsonb('config'),
+});
+
+export const questionOptions = pgTable('question_options', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  questionId: text('question_id').notNull().references(() => questions.id, { onDelete: 'cascade' }),
+  position: integer('position').notNull(),
+  label: text('label').notNull(),
+});
+
+export const surveyResponses = pgTable('survey_responses', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  surveyId: text('survey_id').notNull().references(() => surveys.id, { onDelete: 'cascade' }),
+  userId: text('user_id').references(() => users.id),
+  submittedAt: timestamp('submitted_at', { withTimezone: true }).defaultNow().notNull(),
+  clientToken: text('client_token'),
+  ipHash: text('ip_hash'),
+}, (t) => [
+  uniqueIndex('one_response_per_user').on(t.surveyId, t.userId).where(sql`user_id is not null`),
+]);
+
+export const answers = pgTable('answers', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  responseId: text('response_id').notNull().references(() => surveyResponses.id, { onDelete: 'cascade' }),
+  questionId: text('question_id').notNull().references(() => questions.id, { onDelete: 'cascade' }),
+  optionId: text('option_id').references(() => questionOptions.id),
+  textValue: text('text_value'),
+  numberValue: doublePrecision('number_value'),
+}, (t) => [
+  unique('one_answer_cell').on(t.responseId, t.questionId, t.optionId).nullsNotDistinct(),
+]);

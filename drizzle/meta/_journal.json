@@ -8,6 +8,13 @@
       "when": 1788043296292,
       "tag": "0000_next_crystal",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1788044433719,
+      "tag": "0001_worthless_norrin_radd",
+      "breakpoints": true
     }
   ]
 }
