@@ -105,3 +105,10 @@ The app runs via `scripts/serve.sh` (build + `next start` on :3000) and is expos
 publicly via `scripts/tunnel.sh` (a Cloudflare quick tunnel, Docker container
 `surveyall-tunnel`). The tunnel URL changes on restart — re-run `scripts/tunnel.sh`
 after any restart of the `cloudflared` container and re-share the new URL.
+
+To stop the demo:
+- **App:** `kill "$(cat /tmp/claude-1000/-home-alexander-Documents-GitHub-SurveyAll/f4b60338-5773-49f7-9b7b-0b719f8ec9e3/scratchpad/surveyall-app.pid)"`
+  (that pidfile path is machine-local to the session that started it; if it's gone
+  or on another machine, fall back to `pkill -f "next start"`).
+- **Tunnel:** `docker rm -f surveyall-tunnel`.
+- **DB:** `docker compose down`.
