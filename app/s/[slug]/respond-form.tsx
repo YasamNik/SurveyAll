@@ -2,7 +2,7 @@
 
 import { Fragment, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { QuestionWithOptions } from '@/lib/domain/surveys/types';
+import type { QuestionWithOptions, RespondentNameSetting } from '@/lib/domain/surveys/types';
 import { Star } from '@/app/components/stars';
 
 type AnswerValue = string | string[] | number;
@@ -32,7 +32,7 @@ export function RespondForm({
   survey,
   questions,
 }: {
-  survey: { slug: string };
+  survey: { slug: string; respondentName: RespondentNameSetting };
   questions: QuestionWithOptions[];
 }) {
   const router = useRouter();
@@ -65,12 +65,18 @@ export function RespondForm({
       return;
     }
 
+    const payload: { answers: Record<string, AnswerValue>; name?: string } = { answers };
+    if (survey.respondentName !== 'none') {
+      const rawName = formData.get('respondentName');
+      if (typeof rawName === 'string' && rawName.trim() !== '') payload.name = rawName;
+    }
+
     setSubmitting(true);
     try {
       const res = await fetch(`/api/v1/public/surveys/${survey.slug}/responses`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answers }),
+        body: JSON.stringify(payload),
       });
 
       if (res.status === 201) {
@@ -94,6 +100,36 @@ export function RespondForm({
         <p role="alert" className="error-strip">
           {error}
         </p>
+      )}
+
+      {survey.respondentName !== 'none' && (
+        <fieldset className="card p-6">
+          <legend className="flex items-baseline gap-2 px-1 font-medium">
+            <span>
+              Your name
+              {survey.respondentName === 'required' && (
+                <span className="text-flag" aria-hidden="true">
+                  {' '}
+                  *
+                </span>
+              )}
+              {survey.respondentName === 'optional' && <span className="text-pencil text-sm"> Optional</span>}
+            </span>
+          </legend>
+          <div className="mt-3">
+            <label htmlFor="respondentName" className="sr-only">
+              Your name
+            </label>
+            <input
+              id="respondentName"
+              name="respondentName"
+              type="text"
+              maxLength={100}
+              required={survey.respondentName === 'required'}
+              className="field-input w-full"
+            />
+          </div>
+        </fieldset>
       )}
 
       {questions.map((q, i) => (

@@ -12,8 +12,12 @@ import {
   putQuestion,
 } from '@/lib/db/queries/surveys';
 import { DomainError } from '@/lib/domain/shared/errors';
-import type { OptionInput, QuestionInput, QuestionType } from '@/lib/domain/surveys/types';
+import type { OptionInput, QuestionInput, QuestionType, RespondentNameSetting } from '@/lib/domain/surveys/types';
 import { isThemeId } from '@/lib/themes';
+
+function isRespondentNameSetting(value: string): value is RespondentNameSetting {
+  return value === 'none' || value === 'optional' || value === 'required';
+}
 
 const TITLE_MAX = 200;
 const DESCRIPTION_MAX = 2000;
@@ -75,14 +79,17 @@ export async function patchSurveyAction(surveyId: string, formData: FormData): P
   const title = String(formData.get('title') ?? '').trim();
   const description = String(formData.get('description') ?? '').trim();
   const theme = String(formData.get('theme') ?? 'classic').trim();
+  const respondentName = String(formData.get('respondentName') ?? 'none').trim();
   if (!title) toEditor(surveyId, { error: 'Title is required', section: 'details' });
   if (title.length > TITLE_MAX)
     toEditor(surveyId, { error: `Title is too long (max ${TITLE_MAX} characters)`, section: 'details' });
   if (description.length > DESCRIPTION_MAX)
     toEditor(surveyId, { error: `Description is too long (max ${DESCRIPTION_MAX} characters)`, section: 'details' });
   if (!isThemeId(theme)) toEditor(surveyId, { error: 'Invalid theme', section: 'details' });
+  if (!isRespondentNameSetting(respondentName))
+    toEditor(surveyId, { error: 'Invalid respondent name setting', section: 'details' });
   try {
-    await patchSurvey(surveyId, { title, description, theme });
+    await patchSurvey(surveyId, { title, description, theme, respondentName });
   } catch (e) {
     if (e instanceof DomainError) toEditor(surveyId, { error: e.message, section: 'details' });
     throw e;

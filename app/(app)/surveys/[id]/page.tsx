@@ -103,6 +103,14 @@ export default async function SurveyEditorPage(props: PageProps<'/surveys/[id]'>
                 ))}
               </select>
             </label>
+            <label className="flex flex-col gap-1">
+              <span className="field-label">Ask respondents for their name</span>
+              <select name="respondentName" defaultValue={survey.respondentName} className="field-input">
+                <option value="none">Don&apos;t ask</option>
+                <option value="optional">Optional</option>
+                <option value="required">Required</option>
+              </select>
+            </label>
             <button type="submit" className="btn btn-primary self-start">
               Save changes
             </button>

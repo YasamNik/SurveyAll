@@ -70,6 +70,9 @@ export function SharePanel({ path, closed }: { path: string; closed: boolean }) 
         <button type="button" onClick={handleCopy} className="btn btn-secondary">
           {status === 'copied' ? 'Copied' : 'Copy link'}
         </button>
+        <a href={path} target="_blank" rel="noopener" className="btn btn-secondary">
+          Open
+        </a>
       </div>
       {status === 'failed' && (
         <p role="alert" className="error-strip">

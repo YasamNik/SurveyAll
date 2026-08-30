@@ -22,56 +22,65 @@ memory of the last one — nothing survives except what is committed here.
 
 ---
 
-## Last updated: 2026-08-30 after UX Round 2 (machine: alexander / Linux)
+## Last updated: 2026-08-30 after respondent-name setting + Open button (machine: alexander / Linux)
 
-**State as of commit `1a2d3a5` (= origin/main, CI green).**
+**State as of commit `b76104d` before this session's work (= origin/main at session
+start, CI green). This session adds one commit on top.**
 
-### Live demo — fully working, redesigned twice
+### Live demo — fully working
 
 **https://dinner-comes-motorola-puerto.trycloudflare.com** (rotates if the tunnel
 container restarts — `scripts/tunnel.sh` prints a fresh one).
 
-Complete flows: authoring (create → questions → publish → share-copy-link →
-results) and public respond (`/s/<slug>`, all 4 question types). Auth deliberately
-absent (owner decision); everything open, `author_id` NULL.
+Complete flows: authoring (create → questions → publish → share-copy-link/open →
+results) and public respond (`/s/<slug>`, all 4 question types + optional name
+field). Auth deliberately absent (owner decision); everything open, `author_id`
+NULL.
 
-**UX Round 2 (owner punch list, all shipped + reviewed):** rating config shown only
-for rating type; star rating input + star result summaries; add-question collapsed
-behind a button; publish at the editor bottom with a copy-link share panel; results
-as SVG donut charts (validated palette, honest zeros, multi-choice selection-based
-percentages; free text stays a list); **8 survey themes** (classic/food/business/
-leisure/celebration/education/health/tech — accent + subtle SVG background on public
-pages), theme picker in the editor, `surveys.theme` column (migration 0002).
-Demo lunch survey is set to the food theme.
-
-Final integration review caught and fixed a prod-down bug: closed-survey editor
-500ed (client-module helper called in server render) — fixed in `1a2d3a5`, closed
-editors verified 200 through the tunnel.
+**This session (owner-requested pair of features, both shipped + verified):**
+- **Open button** next to Copy link in the share panel (`share-panel.tsx`) — a
+  plain `<a target="_blank" rel="noopener">` at the same public path, works
+  pre-hydration.
+- **Respondent name setting** — author chooses per survey whether respondents are
+  asked their name: `surveys.respondent_name` enum (`none`/`optional`/`required`,
+  default `none`, migration 0003) + nullable `survey_responses.respondent_name`.
+  Pure domain validator `lib/domain/surveys/respondent-name.ts` (14 new Vitest
+  cases, TDD — failing tests written first). Editor select next to the theme
+  picker; PATCH API + public GET expose the setting; respond page renders a name
+  field above question 01 (required marker / pencil "Optional" hint) when the
+  setting isn't `none`; `submitResponse` validates and stores it (422 via the
+  existing `DomainError` → HTTP mapping); the editor results page shows a
+  "Respondents" line (comma-separated names + "+ N unnamed") when the setting
+  isn't `none` and there is at least one response. `getResults` extended
+  additively with `respondents: string[]` and `respondentName`.
+  Existing surveys default to `none` — verified unchanged behavior (Team Lunch
+  Preferences demo survey renders no name field, 200 through the tunnel).
 
 ### Test/quality state
 
-58 Vitest domain tests green; CI green; every task went through implement → review
-→ fix-loop; two whole-branch reviews (2026-08-30) both closed out with fixes merged.
+72 Vitest tests green (58 baseline + 14 new respondent-name domain tests);
+typecheck/lint/build all green; verified end-to-end via curl against a local dev
+server on :3100 (required/optional/none settings, 422-on-missing-required,
+201-with-name, DB row contents, results-page rendering, editor UI) before
+redeploying prod.
 
 ### Next work (clean slate)
 
-1. Fast follow-ups parked by reviews: options-count cap on the authoring-UI
-   textarea path; dead ternary in donut clamp; `lib/themes.ts` comment points at an
-   untracked report (inline the contrast numbers); `theme` column enum narrowing;
-   star arrow-keys follow reverse-visual DOM order (CSS technique tradeoff);
-   malformed JSON → 500 not 400; respondent results links show raw JSON (a public
-   results page would fix it and complete the design language).
+1. Fast follow-ups parked by earlier reviews (still open, not touched this
+   session): options-count cap on the authoring-UI textarea path; dead ternary in
+   donut clamp; `lib/themes.ts` comment points at an untracked report (inline the
+   contrast numbers); `theme` column enum narrowing; star arrow-keys follow
+   reverse-visual DOM order (CSS technique tradeoff); malformed JSON → 500 not
+   400; the public `/api/v1/public/surveys/[slug]/results` link is raw JSON, not
+   a page.
 2. **Scheduling domain** (When2Meet heatmap grid) — next big feature; modeled in
    architecture spec §3/§4.
 3. **Auth** (Auth.js magic link + Google) — design stands; revisit two standing
    rulings when posture changes (CF-Connecting-IP trust; fully-open authoring).
 4. **Real deploy** (home server, named tunnel/domain, SMTP, backups) — needs owner
    accounts/access (architecture spec §7).
-5. Share link now derives from `window.location.origin` client-side (`66fa71e`) —
-   supersedes the earlier Host-header ruling after the owner hit
-   `https://localhost:3000/...` through the tunnel (cloudflared quick tunnels
-   rewrite Host to the origin). Verified through the tunnel: input shows the real
-   public URL. Owner confirmed clipboard copies work on their device.
+5. Share link derives from `window.location.origin` client-side (`66fa71e`,
+   unchanged this session).
 
 ### Standing environment notes
 

@@ -14,6 +14,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
         slug: survey.slug,
         showResultsToRespondents: survey.showResultsToRespondents,
         theme: survey.theme,
+        respondentName: survey.respondentName,
       },
       questions,
     });

@@ -18,6 +18,7 @@ export const surveys = pgTable('surveys', {
   slug: text('slug').unique(),
   showResultsToRespondents: boolean('show_results_to_respondents').notNull().default(false),
   theme: text('theme').notNull().default('classic'),
+  respondentName: text('respondent_name', { enum: ['none', 'optional', 'required'] }).notNull().default('none'),
   publishedAt: timestamp('published_at', { withTimezone: true }),
   closedAt: timestamp('closed_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
@@ -48,6 +49,7 @@ export const surveyResponses = pgTable('survey_responses', {
   submittedAt: timestamp('submitted_at', { withTimezone: true }).defaultNow().notNull(),
   clientToken: text('client_token'),
   ipHash: text('ip_hash'),
+  respondentName: text('respondent_name'),
 }, (t) => [
   uniqueIndex('one_response_per_user').on(t.surveyId, t.userId).where(sql`user_id is not null`),
 ]);

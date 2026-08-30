@@ -3,6 +3,7 @@ import { db } from '../client';
 import { answers, surveyResponses, surveys } from '../schema';
 import { loadQuestionsWithOptions } from './surveys';
 import { DomainError } from '@/lib/domain/shared/errors';
+import { validateRespondentName } from '@/lib/domain/surveys/respondent-name';
 import { validateResponse, type AnswerRow, type AnswerValue } from '@/lib/domain/surveys/respond';
 import { computeTally, type QuestionResult } from '@/lib/domain/surveys/tally';
 import type { QuestionWithOptions } from '@/lib/domain/surveys/types';
@@ -21,11 +22,13 @@ export async function submitResponse(
   slug: string,
   input: Record<string, AnswerValue>,
   meta: { ipHash: string | null; clientToken: string | null },
+  name?: string,
 ): Promise<{ id: string }> {
   const [survey] = await db.select().from(surveys).where(eq(surveys.slug, slug));
   if (!survey || survey.status === 'draft') throw new DomainError('NOT_FOUND');
   if (survey.status === 'closed') throw new DomainError('SURVEY_CLOSED');
 
+  const respondentName = validateRespondentName(survey.respondentName, name);
   const questionRows = await loadQuestionsWithOptions(survey.id);
 
   return db.transaction(async (tx) => {
@@ -33,7 +36,7 @@ export async function submitResponse(
 
     const [response] = await tx
       .insert(surveyResponses)
-      .values({ surveyId: survey.id, clientToken: meta.clientToken, ipHash: meta.ipHash })
+      .values({ surveyId: survey.id, clientToken: meta.clientToken, ipHash: meta.ipHash, respondentName })
       .returning({ id: surveyResponses.id });
 
     if (rows.length > 0) {

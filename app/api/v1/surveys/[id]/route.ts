@@ -10,6 +10,7 @@ const patchSchema = z.object({
   description: z.string().max(2000).optional(),
   showResultsToRespondents: z.boolean().optional(),
   theme: z.enum(THEME_IDS).optional(),
+  respondentName: z.enum(['none', 'optional', 'required']).optional(),
 });
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {

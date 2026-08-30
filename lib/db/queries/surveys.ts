@@ -1,4 +1,4 @@
-import { and, count, desc, eq, inArray, max } from 'drizzle-orm';
+import { and, count, desc, eq, inArray, isNotNull, max } from 'drizzle-orm';
 import { db } from '../client';
 import { answers, questionOptions, questions, surveyResponses, surveys } from '../schema';
 import { DomainError } from '@/lib/domain/shared/errors';
@@ -7,7 +7,13 @@ import { reconcileOptions } from '@/lib/domain/surveys/reconcile';
 import { assertValidRatingConfig } from '@/lib/domain/surveys/rating';
 import type { AnswerRow } from '@/lib/domain/surveys/respond';
 import { computeTally, type QuestionResult } from '@/lib/domain/surveys/tally';
-import type { QuestionInput, QuestionWithOptions, RatingConfig, StoredOption } from '@/lib/domain/surveys/types';
+import type {
+  QuestionInput,
+  QuestionWithOptions,
+  RatingConfig,
+  RespondentNameSetting,
+  StoredOption,
+} from '@/lib/domain/surveys/types';
 import type { ThemeId } from '@/lib/themes';
 
 const UNIQUE_VIOLATION = '23505';
@@ -87,7 +93,13 @@ export async function getSurveyWithQuestions(
 
 export async function patchSurvey(
   id: string,
-  patch: { title?: string; description?: string; showResultsToRespondents?: boolean; theme?: ThemeId },
+  patch: {
+    title?: string;
+    description?: string;
+    showResultsToRespondents?: boolean;
+    theme?: ThemeId;
+    respondentName?: RespondentNameSetting;
+  },
 ): Promise<void> {
   const result = await db
     .update(surveys)
@@ -239,7 +251,14 @@ export async function closeSurvey(id: string): Promise<void> {
     .where(eq(surveys.id, id));
 }
 
-export async function getResults(id: string): Promise<{ responseCount: number; results: QuestionResult[] }> {
+export async function getResults(
+  id: string,
+): Promise<{
+  responseCount: number;
+  results: QuestionResult[];
+  respondents: string[];
+  respondentName: RespondentNameSetting;
+}> {
   const withQuestions = await getSurveyWithQuestions(id);
   if (!withQuestions) throw new DomainError('NOT_FOUND');
 
@@ -247,6 +266,13 @@ export async function getResults(id: string): Promise<{ responseCount: number; r
     .select({ responseCount: count() })
     .from(surveyResponses)
     .where(eq(surveyResponses.surveyId, id));
+
+  const respondentRows = await db
+    .select({ respondentName: surveyResponses.respondentName })
+    .from(surveyResponses)
+    .where(and(eq(surveyResponses.surveyId, id), isNotNull(surveyResponses.respondentName)))
+    .orderBy(surveyResponses.submittedAt);
+  const respondents = respondentRows.map((r) => r.respondentName as string);
 
   const answerRows = await db
     .select({
@@ -267,5 +293,5 @@ export async function getResults(id: string): Promise<{ responseCount: number; r
   }));
 
   const results = computeTally(withQuestions.questions, rows);
-  return { responseCount, results };
+  return { responseCount, results, respondents, respondentName: withQuestions.survey.respondentName };
 }

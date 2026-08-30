@@ -21,7 +21,9 @@ export default async function SurveyResultsPage(props: PageProps<'/surveys/[id]/
   const data = await getSurveyWithQuestions(id);
   if (!data) notFound();
 
-  const { responseCount, results } = await getResults(id);
+  const { responseCount, results, respondents, respondentName } = await getResults(id);
+  const unnamedCount = responseCount - respondents.length;
+  const respondentsLine = [...respondents, ...(unnamedCount > 0 ? [`+ ${unnamedCount} unnamed`] : [])].join(', ');
 
   return (
     <main className="max-w-2xl mx-auto px-4 py-10 flex flex-col gap-8">
@@ -33,6 +35,9 @@ export default async function SurveyResultsPage(props: PageProps<'/surveys/[id]/
         <p className="font-mono text-xs text-pencil">
           {responseCount} response{responseCount === 1 ? '' : 's'}
         </p>
+        {respondentName !== 'none' && responseCount > 0 && (
+          <p className="font-mono text-xs text-pencil">Respondents: {respondentsLine}</p>
+        )}
       </div>
 
       {results.length === 0 ? (

@@ -1,5 +1,6 @@
 export type QuestionType = 'single_choice' | 'multi_choice' | 'free_text' | 'rating';
 export type SurveyStatus = 'draft' | 'published' | 'closed';
+export type RespondentNameSetting = 'none' | 'optional' | 'required';
 
 export interface RatingConfig {
   min: number;

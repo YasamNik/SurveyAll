@@ -41,7 +41,7 @@ export default async function RespondPage(props: PageProps<'/s/[slug]'>) {
         ) : (
           <>
             <div className="tear-line" />
-            <RespondForm survey={{ slug }} questions={questions} />
+            <RespondForm survey={{ slug, respondentName: survey.respondentName }} questions={questions} />
           </>
         )}
       </main>

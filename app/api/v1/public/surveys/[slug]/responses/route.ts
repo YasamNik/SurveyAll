@@ -9,6 +9,7 @@ const bodySchema = z.object({
     z.string(),
     z.union([z.string().max(10000), z.array(z.string().max(100)).max(50), z.number()]),
   ),
+  name: z.string().max(100).optional(),
 });
 
 const CLIENT_TOKEN_MAX = 128;
@@ -51,7 +52,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ slug: s
     const { slug } = await params;
     const body = bodySchema.parse(await req.json());
     const clientToken = clientTokenFrom(req);
-    const result = await submitResponse(slug, body.answers, { ipHash, clientToken });
+    const result = await submitResponse(slug, body.answers, { ipHash, clientToken }, body.name);
     return NextResponse.json(result, { status: 201 });
   });
 }
