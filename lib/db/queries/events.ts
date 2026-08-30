@@ -149,6 +149,25 @@ export async function getPublicEventBySlug(slug: string): Promise<{
   };
 }
 
+export async function getParticipantByToken(
+  eventId: string,
+  token: string,
+): Promise<{ id: string; displayName: string } | null> {
+  const [row] = await db
+    .select({ id: scheduleParticipants.id, displayName: scheduleParticipants.displayName })
+    .from(scheduleParticipants)
+    .where(and(eq(scheduleParticipants.eventId, eventId), eq(scheduleParticipants.clientToken, token)));
+  return row ?? null;
+}
+
+export async function getParticipantSlots(participantId: string): Promise<string[]> {
+  const rows = await db
+    .select({ slotStart: availabilitySlots.slotStart })
+    .from(availabilitySlots)
+    .where(eq(availabilitySlots.participantId, participantId));
+  return rows.map((row) => row.slotStart.toISOString()).sort();
+}
+
 export async function joinEvent(slug: string, displayName: string): Promise<{ participantId: string; token: string }> {
   const event = await getEventRowBySlug(slug);
   if (event.status === 'closed') throw new DomainError('SURVEY_CLOSED', 'event is closed');

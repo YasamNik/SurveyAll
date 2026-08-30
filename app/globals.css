@@ -405,4 +405,158 @@ body {
     color: var(--pencil);
     font-size: 0.8125rem;
   }
+
+  /* ---- Availability grid (public event page) ---- */
+
+  .btn-secondary[aria-pressed="true"] {
+    background: color-mix(in srgb, var(--stamp) 10%, transparent);
+    border-color: var(--stamp);
+    color: var(--stamp);
+  }
+
+  .avail-scroll {
+    overflow-x: auto;
+    max-width: 100%;
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    background: var(--card);
+  }
+
+  .avail-grid {
+    position: relative;
+    display: grid;
+    gap: 2px;
+    padding: 0.5rem;
+    width: fit-content;
+    touch-action: none;
+  }
+
+  .avail-corner {
+    min-width: 32px;
+    min-height: 32px;
+    position: sticky;
+    left: 0;
+    z-index: 2;
+    background: var(--card);
+  }
+
+  .avail-day-header {
+    min-width: 32px;
+    min-height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    white-space: nowrap;
+    text-align: center;
+  }
+
+  .avail-time-label {
+    min-width: 32px;
+    min-height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-right: 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--pencil);
+    white-space: nowrap;
+    position: sticky;
+    left: 0;
+    z-index: 1;
+    background: var(--card);
+  }
+
+  .avail-cell,
+  .avail-cell-empty {
+    min-width: 32px;
+    min-height: 32px;
+  }
+
+  .avail-cell {
+    appearance: none;
+    -webkit-appearance: none;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: var(--paper);
+    padding: 0;
+    cursor: pointer;
+  }
+
+  .avail-cell.is-painted {
+    background: var(--stamp);
+    border-color: var(--stamp);
+  }
+
+  .avail-cell:focus-visible {
+    outline: none;
+    box-shadow:
+      0 0 0 2px var(--paper),
+      0 0 0 4px var(--stamp);
+  }
+
+  @media (max-width: 640px) {
+    .avail-corner,
+    .avail-day-header,
+    .avail-time-label,
+    .avail-cell,
+    .avail-cell-empty {
+      min-width: 44px;
+      min-height: 44px;
+    }
+  }
+
+  .avail-legend {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    color: var(--pencil);
+    font-size: 0.8125rem;
+  }
+
+  .avail-legend-swatch {
+    width: 14px;
+    height: 14px;
+    border-radius: 2px;
+    border: 1px solid var(--rule);
+  }
+
+  .avail-legend-swatch-0 {
+    background: var(--paper);
+  }
+
+  .avail-popover {
+    position: absolute;
+    z-index: 10;
+    min-width: 140px;
+    max-width: 220px;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 0.5rem 0.75rem;
+    box-shadow: 0 2px 8px rgba(31, 42, 55, 0.15);
+  }
+
+  .avail-popover ul {
+    margin: 0.25rem 0 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.875rem;
+  }
+
+  .avail-popover-close {
+    position: absolute;
+    top: 0.25rem;
+    right: 0.5rem;
+    background: none;
+    border: none;
+    color: var(--pencil);
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+    padding: 0.25rem;
+  }
 }
