@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { STAMP_TINTS, dayKeyOf, dayLabelOf, heatmapBg, timeKeyOf } from './grid-locale';
+import { HEATMAP_GREENS, dayKeyOf, dayLabelOf, dayLabelShortOf, heatmapBg, timeKeyOf } from './grid-locale';
 
 type HeatmapSlot = { slot: string; count: number; names: string[] };
 type Heatmap = { participantCount: number; slots: HeatmapSlot[] };
@@ -52,7 +52,7 @@ export function AvailabilityGrid({
   const dragModeRef = useRef<'add' | 'erase' | null>(null);
 
   const { days, times, cellByKey } = useMemo(() => {
-    const dayMap = new Map<string, string>();
+    const dayMap = new Map<string, { dayLabel: string; dayLabelShort: string }>();
     const timeSet = new Set<string>();
     const byKey = new Map<string, string>();
 
@@ -60,14 +60,14 @@ export function AvailabilityGrid({
       const d = new Date(iso);
       const dayKey = dayKeyOf(d);
       const timeKey = timeKeyOf(d);
-      if (!dayMap.has(dayKey)) dayMap.set(dayKey, dayLabelOf(d));
+      if (!dayMap.has(dayKey)) dayMap.set(dayKey, { dayLabel: dayLabelOf(d), dayLabelShort: dayLabelShortOf(d) });
       timeSet.add(timeKey);
       byKey.set(`${dayKey}|${timeKey}`, iso);
     }
 
     const sortedDays = Array.from(dayMap.entries())
       .sort(([a], [b]) => a.localeCompare(b))
-      .map(([dayKey, dayLabel]) => ({ dayKey, dayLabel }));
+      .map(([dayKey, labels]) => ({ dayKey, ...labels }));
     const sortedTimes = Array.from(timeSet).sort();
 
     return { days: sortedDays, times: sortedTimes, cellByKey: byKey };
@@ -190,23 +190,25 @@ export function AvailabilityGrid({
       {joined && myName && <p className="text-pencil text-sm">Joined as {myName}</p>}
 
       {canPaint && (
-        <div className="flex gap-2" role="group" aria-label="View mode">
-          <button
-            type="button"
-            className="btn btn-secondary"
-            aria-pressed={effectiveMode === 'paint'}
-            onClick={() => setMode('paint')}
-          >
-            Paint mine
-          </button>
-          <button
-            type="button"
-            className="btn btn-secondary"
-            aria-pressed={effectiveMode === 'heatmap'}
-            onClick={() => setMode('heatmap')}
-          >
-            Group heatmap
-          </button>
+        <div className="mode-toggle-bar">
+          <div className="mode-toggle" role="group" aria-label="View mode">
+            <button
+              type="button"
+              className="mode-toggle-btn"
+              aria-pressed={effectiveMode === 'paint'}
+              onClick={() => setMode('paint')}
+            >
+              Paint mine
+            </button>
+            <button
+              type="button"
+              className="mode-toggle-btn"
+              aria-pressed={effectiveMode === 'heatmap'}
+              onClick={() => setMode('heatmap')}
+            >
+              Group heatmap
+            </button>
+          </div>
         </div>
       )}
 
@@ -228,13 +230,16 @@ export function AvailabilityGrid({
             <div className="avail-corner" />
             {days.map((day) => (
               <div key={day.dayKey} className="avail-day-header">
-                {day.dayLabel}
+                <span className="sm:hidden">{day.dayLabelShort}</span>
+                <span className="hidden sm:inline">{day.dayLabel}</span>
               </div>
             ))}
 
             {times.map((time) => (
               <Fragment key={time}>
-                <div className="avail-time-label">{time}</div>
+                <div className="avail-time-label">
+                  <span className={time.endsWith(':00') ? '' : 'hidden sm:inline'}>{time}</span>
+                </div>
                 {days.map((day) => {
                   const iso = cellByKey.get(`${day.dayKey}|${time}`);
                   if (!iso) return <div key={day.dayKey} className="avail-cell-empty" />;
@@ -305,16 +310,16 @@ export function AvailabilityGrid({
         <div className="avail-legend">
           <span>0</span>
           <span className="avail-legend-swatch avail-legend-swatch-0" />
-          <span className="avail-legend-swatch" style={{ backgroundColor: `rgba(61, 70, 178, ${STAMP_TINTS[0]})` }} />
-          <span className="avail-legend-swatch" style={{ backgroundColor: `rgba(61, 70, 178, ${STAMP_TINTS[1]})` }} />
-          <span className="avail-legend-swatch" style={{ backgroundColor: `rgba(61, 70, 178, ${STAMP_TINTS[2]})` }} />
-          <span className="avail-legend-swatch" style={{ backgroundColor: `rgba(61, 70, 178, ${STAMP_TINTS[3]})` }} />
-          <span>all available</span>
+          <span className="avail-legend-swatch" style={{ backgroundColor: HEATMAP_GREENS[0] }} />
+          <span className="avail-legend-swatch" style={{ backgroundColor: HEATMAP_GREENS[1] }} />
+          <span className="avail-legend-swatch" style={{ backgroundColor: HEATMAP_GREENS[2] }} />
+          <span className="avail-legend-swatch" style={{ backgroundColor: HEATMAP_GREENS[3] }} />
+          <span>everyone available</span>
         </div>
       )}
 
       {effectiveMode === 'paint' && (
-        <div className="flex flex-col gap-2">
+        <div className="avail-actions flex flex-col gap-2">
           <div className="flex items-center gap-3">
             <button
               type="button"

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { dayKeyOf, dayLabelOf, timeKeyOf, heatmapStep, heatmapBg, STAMP_TINTS } from './grid-locale';
+import { dayKeyOf, dayLabelOf, timeKeyOf, heatmapStep, heatmapBg, HEATMAP_GREENS } from './grid-locale';
 
 describe('dayKeyOf / dayLabelOf / timeKeyOf', () => {
   it('buckets a known instant in a fixed zone (America/Toronto)', () => {
@@ -64,19 +64,33 @@ describe('heatmapStep / heatmapBg', () => {
     expect(heatmapStep(0, 0)).toBeNull();
   });
 
-  it('bands the four non-zero quartiles correctly', () => {
+  it('bands the non-full ratios into thirds', () => {
     expect(heatmapStep(1, 4)).toBe(0); // 0.25 -> step 0
     expect(heatmapStep(2, 4)).toBe(1); // 0.5 -> step 1
-    expect(heatmapStep(3, 4)).toBe(2); // 0.75 -> step 2
+    expect(heatmapStep(3, 4)).toBe(2); // 0.75, not full -> step 2
+  });
+
+  it('a full match (count === participantCount) always lands in the top step', () => {
     expect(heatmapStep(4, 4)).toBe(3); // 1.0 -> step 3
+    expect(heatmapStep(1, 1)).toBe(3);
+    expect(heatmapStep(7, 7)).toBe(3);
+  });
+
+  it('a near-full but partial match never reaches the top step when participantCount >= 2', () => {
+    // 4 of 5 is 0.8 — under the old quartile scheme this banded as "full"; the
+    // top step is now reserved exclusively for count === participantCount, so
+    // "everyone available" reads unambiguously as the deepest green.
+    expect(heatmapStep(4, 5)).toBe(2);
+    expect(heatmapStep(9, 10)).toBe(2);
   });
 
   it('participantCount 1 with the sole participant painted is the full (last) step', () => {
     expect(heatmapStep(1, 1)).toBe(3);
-    expect(heatmapBg(1, 1)).toBe(`rgba(61, 70, 178, ${STAMP_TINTS[3]})`);
+    expect(heatmapBg(1, 1)).toBe(HEATMAP_GREENS[3]);
   });
 
-  it('heatmapBg renders the rgba string matching the banded tint', () => {
-    expect(heatmapBg(1, 4)).toBe(`rgba(61, 70, 178, ${STAMP_TINTS[0]})`);
+  it('heatmapBg renders the green swatch matching the banded step', () => {
+    expect(heatmapBg(1, 4)).toBe(HEATMAP_GREENS[0]);
+    expect(heatmapBg(4, 4)).toBe(HEATMAP_GREENS[3]);
   });
 });

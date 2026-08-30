@@ -28,6 +28,16 @@ export function dayLabelOf(d: Date, timeZone?: string): string {
   return `${partValue(parts, 'weekday')} ${partValue(parts, 'month')} ${partValue(parts, 'day')}`;
 }
 
+/** Compact day label for narrow (mobile) headers — weekday + day, no month, e.g. "Mon 31". */
+export function dayLabelShortOf(d: Date, timeZone?: string): string {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    weekday: 'short',
+    day: 'numeric',
+    timeZone,
+  }).formatToParts(d);
+  return `${partValue(parts, 'weekday')} ${partValue(parts, 'day')}`;
+}
+
 export function timeKeyOf(d: Date, timeZone?: string): string {
   const parts = new Intl.DateTimeFormat('en-US', {
     hour: '2-digit',
@@ -42,17 +52,28 @@ export function timeKeyOf(d: Date, timeZone?: string): string {
   return `${hour}:${partValue(parts, 'minute')}`;
 }
 
-export const STAMP_TINTS = [0.15, 0.35, 0.6, 1.0];
+// Sequential green ramp, pale -> "everyone available". Solid (opaque) colors so
+// the banding reads identically over --paper or --card, unlike an alpha tint.
+// Anchored around #1B7A43 for the top (full-match) step, which carries a
+// ~5.1:1 contrast ratio against --paper (#FAFAF7) — comfortably over the 3:1 floor.
+export const HEATMAP_GREENS = ['#D6EEDB', '#9FD6AE', '#57AE71', '#1B7A43'] as const;
 
-/** Which of the 4 non-zero heatmap tints a count/participantCount ratio falls into, or null for 0. */
+/**
+ * Which of the 4 non-zero heatmap steps a count/participantCount ratio falls
+ * into, or null for 0. The top step (index 3, deepest green) is reserved for
+ * a full match — count === participantCount — so "everyone available" is
+ * unambiguous; a near-full but partial slot (e.g. 4 of 5) bands into step 2,
+ * never the top step.
+ */
 export function heatmapStep(count: number, participantCount: number): number | null {
   if (count <= 0 || participantCount <= 0) return null;
+  if (count >= participantCount) return 3;
   const ratio = count / participantCount;
-  return ratio <= 0.25 ? 0 : ratio <= 0.5 ? 1 : ratio <= 0.75 ? 2 : 3;
+  return ratio <= 1 / 3 ? 0 : ratio <= 2 / 3 ? 1 : 2;
 }
 
 export function heatmapBg(count: number, participantCount: number): string | undefined {
   const step = heatmapStep(count, participantCount);
   if (step === null) return undefined;
-  return `rgba(61, 70, 178, ${STAMP_TINTS[step]})`;
+  return HEATMAP_GREENS[step];
 }

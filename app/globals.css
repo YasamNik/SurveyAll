@@ -408,14 +408,70 @@ body {
 
   /* ---- Availability grid (public event page) ---- */
 
-  .btn-secondary[aria-pressed="true"] {
-    background: color-mix(in srgb, var(--stamp) 10%, transparent);
-    border-color: var(--stamp);
-    color: var(--stamp);
+  /* ---- Mode toggle: compact segmented control (Paint mine / Group heatmap) ---- */
+
+  .mode-toggle-bar {
+    width: fit-content;
   }
 
+  .mode-toggle {
+    display: inline-flex;
+    border: 1px solid var(--ink);
+    border-radius: 4px;
+    overflow: hidden;
+    width: fit-content;
+  }
+
+  .mode-toggle-btn {
+    appearance: none;
+    -webkit-appearance: none;
+    background: transparent;
+    border: none;
+    min-height: 44px;
+    padding: 0.5rem 1.25rem;
+    color: var(--ink);
+    font-weight: 600;
+    font-size: 0.9375rem;
+    cursor: pointer;
+    transition: background-color 120ms ease-in, color 120ms ease-in;
+  }
+
+  .mode-toggle-btn + .mode-toggle-btn {
+    border-left: 1px solid var(--ink);
+  }
+
+  .mode-toggle-btn[aria-pressed="true"] {
+    background: var(--stamp);
+    color: white;
+  }
+
+  .mode-toggle-btn:focus-visible {
+    outline: 2px solid var(--stamp);
+    outline-offset: -2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mode-toggle-btn {
+      transition: none;
+    }
+  }
+
+  @media (max-width: 640px) {
+    .mode-toggle-bar {
+      position: sticky;
+      top: 0;
+      z-index: 4;
+      width: 100%;
+      background: var(--paper);
+      padding: 0.5rem 0;
+    }
+  }
+
+  /* ---- Grid: sticky day-header row + time-label column inside .avail-scroll ---- */
+
   .avail-scroll {
-    overflow-x: auto;
+    overflow: auto;
+    max-height: min(70vh, 640px);
     max-width: 100%;
     border: 1px solid var(--rule);
     border-radius: 6px;
@@ -435,9 +491,12 @@ body {
     min-width: 32px;
     min-height: 32px;
     position: sticky;
+    top: 0;
     left: 0;
-    z-index: 2;
+    z-index: 3;
     background: var(--card);
+    border-right: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
   }
 
   .avail-day-header {
@@ -451,6 +510,11 @@ body {
     font-weight: 600;
     white-space: nowrap;
     text-align: center;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--card);
+    border-bottom: 1px solid var(--rule);
   }
 
   .avail-time-label {
@@ -468,6 +532,7 @@ body {
     left: 0;
     z-index: 1;
     background: var(--card);
+    border-right: 1px solid var(--rule);
   }
 
   .avail-cell,
@@ -506,6 +571,19 @@ body {
     .avail-cell-empty {
       min-width: 44px;
       min-height: 44px;
+    }
+  }
+
+  /* ---- Sticky save bar (mobile, paint mode) ---- */
+
+  @media (max-width: 640px) {
+    .avail-actions {
+      position: sticky;
+      bottom: 0;
+      z-index: 5;
+      background: var(--card);
+      border-top: 1px solid var(--rule);
+      padding: 0.75rem 0 calc(0.75rem + env(safe-area-inset-bottom));
     }
   }
 
