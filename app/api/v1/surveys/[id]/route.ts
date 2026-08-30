@@ -5,8 +5,8 @@ import { DomainError } from '@/lib/domain/shared/errors';
 import { deleteSurvey, getSurveyWithQuestions, patchSurvey } from '@/lib/db/queries/surveys';
 
 const patchSchema = z.object({
-  title: z.string().min(1).optional(),
-  description: z.string().optional(),
+  title: z.string().min(1).max(200).optional(),
+  description: z.string().max(2000).optional(),
   showResultsToRespondents: z.boolean().optional(),
 });
 

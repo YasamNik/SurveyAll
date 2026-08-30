@@ -4,8 +4,8 @@ import { handle } from '@/lib/api/errors';
 import { createSurvey, listSurveys } from '@/lib/db/queries/surveys';
 
 const createSchema = z.object({
-  title: z.string().min(1),
-  description: z.string().optional(),
+  title: z.string().min(1).max(200),
+  description: z.string().max(2000).optional(),
 });
 
 export async function GET() {

@@ -52,6 +52,9 @@ export function validateResponse(
             `multi_choice answer must be an array of option ids (question ${question.id})`,
           );
         }
+        if (question.required && value.length === 0) {
+          throw new DomainError('INVALID_ANSWER', `missing required answer for question ${question.id}`);
+        }
         const seen = new Set<string>();
         for (const optionId of value) {
           if (typeof optionId !== 'string') {
@@ -75,6 +78,9 @@ export function validateResponse(
         }
         if (question.required && value.trim().length === 0) {
           throw new DomainError('INVALID_ANSWER', `free_text answer is required (question ${question.id})`);
+        }
+        if (value.length > 10000) {
+          throw new DomainError('INVALID_ANSWER', `free_text answer is too long (question ${question.id})`);
         }
         rows.push({ questionId: question.id, optionId: null, textValue: value, numberValue: null });
         break;

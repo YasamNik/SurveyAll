@@ -12,7 +12,7 @@ const FRIENDLY_ERROR: Record<string, string> = {
 
 function ratingValues(q: QuestionWithOptions): number[] {
   const min = q.config?.min ?? 1;
-  const max = q.config?.max ?? 5;
+  const max = Math.min(q.config?.max ?? 5, min + 10);
   const values: number[] = [];
   for (let v = min; v <= max; v++) values.push(v);
   return values;

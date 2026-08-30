@@ -4,6 +4,7 @@ import { answers, questionOptions, questions, surveyResponses, surveys } from '.
 import { DomainError } from '@/lib/domain/shared/errors';
 import { randomSlug } from '@/lib/domain/shared/slug';
 import { reconcileOptions } from '@/lib/domain/surveys/reconcile';
+import { assertValidRatingConfig } from '@/lib/domain/surveys/rating';
 import type { AnswerRow } from '@/lib/domain/surveys/respond';
 import { computeTally, type QuestionResult } from '@/lib/domain/surveys/tally';
 import type { QuestionInput, QuestionWithOptions, RatingConfig, StoredOption } from '@/lib/domain/surveys/types';
@@ -101,6 +102,7 @@ export async function deleteSurvey(id: string): Promise<void> {
 }
 
 export async function addQuestion(surveyId: string, q: QuestionInput): Promise<{ id: string }> {
+  if (q.type === 'rating') assertValidRatingConfig(q.config);
   return db.transaction(async (tx) => {
     const [survey] = await tx.select({ status: surveys.status }).from(surveys).where(eq(surveys.id, surveyId));
     if (!survey) throw new DomainError('NOT_FOUND');
@@ -135,6 +137,7 @@ export async function addQuestion(surveyId: string, q: QuestionInput): Promise<{
 }
 
 export async function putQuestion(surveyId: string, qid: string, q: QuestionInput): Promise<void> {
+  if (q.type === 'rating') assertValidRatingConfig(q.config);
   await db.transaction(async (tx) => {
     const [survey] = await tx.select({ status: surveys.status }).from(surveys).where(eq(surveys.id, surveyId));
     if (!survey) throw new DomainError('NOT_FOUND');

@@ -90,6 +90,11 @@ describe('validateResponse — happy paths', () => {
     expect(rows).toEqual([]);
   });
 
+  it('empty array for an optional multi_choice produces no rows and does not throw', () => {
+    const rows = validateResponse([multiChoice], { q2: [] });
+    expect(rows).toEqual([]);
+  });
+
   it('optional free_text left undefined produces no row', () => {
     const rows = validateResponse([optionalFreeText], {});
     expect(rows).toEqual([]);
@@ -139,6 +144,16 @@ describe('validateResponse — throws INVALID_ANSWER', () => {
     expect(() => validateResponse([multiChoice], { q2: 'o3' })).toThrow(DomainError);
   });
 
+  it('empty array for a required multi_choice is treated as missing', () => {
+    const requiredMultiChoice: QuestionWithOptions = { ...multiChoice, id: 'q2c', required: true };
+    expect(() => validateResponse([requiredMultiChoice], { q2c: [] })).toThrow(DomainError);
+    try {
+      validateResponse([requiredMultiChoice], { q2c: [] });
+    } catch (e) {
+      expect((e as DomainError).code).toBe('INVALID_ANSWER');
+    }
+  });
+
   it('multi_choice with duplicate option ids', () => {
     expect(() => validateResponse([multiChoice], { q2: ['o3', 'o3'] })).toThrow(DomainError);
     try {
@@ -174,6 +189,20 @@ describe('validateResponse — throws INVALID_ANSWER', () => {
 
   it('free_text given a non-string value', () => {
     expect(() => validateResponse([freeText], { q3: 5 })).toThrow(DomainError);
+  });
+
+  it('free_text longer than 10000 characters', () => {
+    expect(() => validateResponse([freeText], { q3: 'a'.repeat(10001) })).toThrow(DomainError);
+    try {
+      validateResponse([freeText], { q3: 'a'.repeat(10001) });
+    } catch (e) {
+      expect((e as DomainError).code).toBe('INVALID_ANSWER');
+    }
+  });
+
+  it('free_text at exactly 10000 characters is allowed', () => {
+    const rows = validateResponse([freeText], { q3: 'a'.repeat(10000) });
+    expect(rows).toHaveLength(1);
   });
 
   it('all errors carry the INVALID_ANSWER code', () => {

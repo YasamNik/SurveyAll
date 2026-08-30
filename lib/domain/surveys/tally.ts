@@ -47,7 +47,7 @@ export function computeTally(questions: QuestionWithOptions[], answers: AnswerRo
         const values = rows.filter((row) => row.numberValue !== null).map((row) => row.numberValue as number);
         const ratingAverage = values.length === 0 ? null : values.reduce((sum, v) => sum + v, 0) / values.length;
         const min = question.config?.min ?? 0;
-        const max = question.config?.max ?? 0;
+        const max = Math.min(question.config?.max ?? 0, min + 10);
         const ratingCounts: { value: number; count: number }[] = [];
         for (let value = min; value <= max; value++) {
           ratingCounts.push({ value, count: values.filter((v) => v === value).length });

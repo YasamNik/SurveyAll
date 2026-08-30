@@ -14,6 +14,11 @@ import {
 import { DomainError } from '@/lib/domain/shared/errors';
 import type { OptionInput, QuestionInput, QuestionType } from '@/lib/domain/surveys/types';
 
+const TITLE_MAX = 200;
+const DESCRIPTION_MAX = 2000;
+const PROMPT_MAX = 500;
+const OPTION_LABEL_MAX = 200;
+
 function toEditor(surveyId: string, opts?: { error?: string; section?: string }): never {
   const qs = new URLSearchParams();
   if (opts?.error) qs.set('error', opts.error);
@@ -40,15 +45,27 @@ function parseQuestionInput(formData: FormData, existingOptionIds: string[]): Qu
       : [];
   const config =
     type === 'rating'
-      ? { min: Number(formData.get('min') ?? 1), max: Number(formData.get('max') ?? 5) }
+      ? { min: parseRatingBound(formData.get('min')), max: parseRatingBound(formData.get('max')) }
       : null;
   return { prompt, type, required, config, options };
+}
+
+// Empty/missing form values must not silently become 0 — that would bypass the
+// rating range check downstream. Number(null) is 0 and Number('') is also 0, so
+// both are normalized to NaN, which the domain guard rejects.
+function parseRatingBound(raw: FormDataEntryValue | null): number {
+  if (raw === null || raw === '') return NaN;
+  return Number(raw);
 }
 
 export async function createSurveyAction(formData: FormData): Promise<void> {
   const title = String(formData.get('title') ?? '').trim();
   const description = String(formData.get('description') ?? '').trim();
   if (!title) redirect(`/surveys?error=${encodeURIComponent('Title is required')}`);
+  if (title.length > TITLE_MAX)
+    redirect(`/surveys?error=${encodeURIComponent(`Title is too long (max ${TITLE_MAX} characters)`)}`);
+  if (description.length > DESCRIPTION_MAX)
+    redirect(`/surveys?error=${encodeURIComponent(`Description is too long (max ${DESCRIPTION_MAX} characters)`)}`);
   const { id } = await createSurvey({ title, description: description || undefined });
   redirect(`/surveys/${id}`);
 }
@@ -57,6 +74,10 @@ export async function patchSurveyAction(surveyId: string, formData: FormData): P
   const title = String(formData.get('title') ?? '').trim();
   const description = String(formData.get('description') ?? '').trim();
   if (!title) toEditor(surveyId, { error: 'Title is required', section: 'details' });
+  if (title.length > TITLE_MAX)
+    toEditor(surveyId, { error: `Title is too long (max ${TITLE_MAX} characters)`, section: 'details' });
+  if (description.length > DESCRIPTION_MAX)
+    toEditor(surveyId, { error: `Description is too long (max ${DESCRIPTION_MAX} characters)`, section: 'details' });
   try {
     await patchSurvey(surveyId, { title, description });
   } catch (e) {
@@ -81,6 +102,10 @@ export async function toggleResultsAction(surveyId: string, next: boolean): Prom
 export async function addQuestionAction(surveyId: string, formData: FormData): Promise<void> {
   const input = parseQuestionInput(formData, []);
   if (!input.prompt) toEditor(surveyId, { error: 'Prompt is required', section: 'add-question' });
+  if (input.prompt.length > PROMPT_MAX)
+    toEditor(surveyId, { error: `Prompt is too long (max ${PROMPT_MAX} characters)`, section: 'add-question' });
+  if (input.options.some((o) => o.label.length > OPTION_LABEL_MAX))
+    toEditor(surveyId, { error: `Option is too long (max ${OPTION_LABEL_MAX} characters)`, section: 'add-question' });
   try {
     await addQuestion(surveyId, input);
   } catch (e) {
@@ -98,10 +123,16 @@ export async function putQuestionAction(
   formData: FormData,
 ): Promise<void> {
   const input = parseQuestionInput(formData, existingOptionIds);
+  const section = `question-${questionId}`;
+  if (!input.prompt) toEditor(surveyId, { error: 'Prompt is required', section });
+  if (input.prompt.length > PROMPT_MAX)
+    toEditor(surveyId, { error: `Prompt is too long (max ${PROMPT_MAX} characters)`, section });
+  if (input.options.some((o) => o.label.length > OPTION_LABEL_MAX))
+    toEditor(surveyId, { error: `Option is too long (max ${OPTION_LABEL_MAX} characters)`, section });
   try {
     await putQuestion(surveyId, questionId, input);
   } catch (e) {
-    if (e instanceof DomainError) toEditor(surveyId, { error: e.message, section: `question-${questionId}` });
+    if (e instanceof DomainError) toEditor(surveyId, { error: e.message, section });
     throw e;
   }
   revalidatePath(`/surveys/${surveyId}`);

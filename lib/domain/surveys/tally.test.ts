@@ -137,6 +137,16 @@ describe('computeTally — rating', () => {
   });
 });
 
+describe('computeTally — defensive clamp for out-of-range stored config', () => {
+  it('caps the ratingCounts span at 10 even if the stored config has a huge max', () => {
+    const wideRating: QuestionWithOptions = { ...rating, config: { min: 0, max: 2_000_000_000 } };
+    const [result] = computeTally([wideRating], []);
+    expect(result.ratingCounts).toHaveLength(11);
+    expect(result.ratingCounts?.[0].value).toBe(0);
+    expect(result.ratingCounts?.[10].value).toBe(10);
+  });
+});
+
 describe('computeTally — multiple questions in one pass', () => {
   it('groups answers by question and returns one result per question', () => {
     const answers: AnswerRow[] = [

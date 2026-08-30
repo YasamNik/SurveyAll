@@ -5,8 +5,13 @@ import { ipHashFrom } from '@/lib/api/ip';
 import { submitResponse } from '@/lib/db/queries/public';
 
 const bodySchema = z.object({
-  answers: z.record(z.string(), z.union([z.string(), z.array(z.string()), z.number()])),
+  answers: z.record(
+    z.string(),
+    z.union([z.string().max(10000), z.array(z.string().max(100)).max(50), z.number()]),
+  ),
 });
+
+const CLIENT_TOKEN_MAX = 128;
 
 const RATE_LIMIT_WINDOW_MS = 60_000;
 const RATE_LIMIT_MAX = 10;
@@ -31,7 +36,7 @@ function clientTokenFrom(req: Request): string | null {
   if (!cookieHeader) return null;
   for (const part of cookieHeader.split(';')) {
     const [key, ...rest] = part.trim().split('=');
-    if (key === 'client_token') return decodeURIComponent(rest.join('='));
+    if (key === 'client_token') return decodeURIComponent(rest.join('=')).slice(0, CLIENT_TOKEN_MAX);
   }
   return null;
 }
