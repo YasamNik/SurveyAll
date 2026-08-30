@@ -9,100 +9,70 @@ memory of the last one — nothing survives except what is committed here.
 |---|---|---|
 | `docs/STATUS.md` (this file) | **Rewritten** each session | Where the project stands, what is next, what is blocked |
 | `docs/DECISIONS.md` | **Append-only — never rewrite** | Every decision and the reasoning behind it |
-| `docs/superpowers/specs/YYYY-MM-DD-*.md` | Frozen once written | The design. Current: `2026-08-29-surveyall-design.md` |
-| `docs/superpowers/plans/2026-08-29-open-demo-survey-vertical.md` | The active implementation plan | 11 tasks; execution state below |
+| `docs/superpowers/specs/` | Frozen once written | Architecture: `2026-08-29-surveyall-design.md`. Visual: `2026-08-30-surveyall-visual-design.md` |
+| `docs/superpowers/plans/2026-08-29-open-demo-survey-vertical.md` | **COMPLETE** | The executed build plan (11 tasks + design pass) |
 
 ### Conventions settled in practice
 
-- **Pushing:** direct to `main` is fine (owner's call). This session the owner
-  additionally authorized full-autonomy code pushes.
-- **pnpm:** invoke as `corepack pnpm <cmd>` from the repo root (pinned `pnpm@9.15.0`
-  in package.json; corepack's default pnpm 11 needs Node ≥22, this box has Node 20).
+- **Pushing:** direct to `main` (owner's call); full-autonomy pushes authorized 2026-08-29.
+- **pnpm:** `corepack pnpm <cmd>` from repo root (pinned `pnpm@9.15.0`; Node 20 here).
+- **Commands:** `corepack pnpm typecheck | lint | test | build | db:generate | db:migrate`.
+  CI (GitHub Actions) runs all of these + migrations against ephemeral Postgres on every
+  push/PR — green as of run 33310733337.
 - **End of session:** rewrite this file, append DECISIONS if decided, commit, push.
 
 ---
 
-## Last updated: 2026-08-29 end of session (machine: alexander / Linux)
+## Last updated: 2026-08-30 end of build (machine: alexander / Linux)
 
-**State as of commit `a8797ea`.** Run `git log a8797ea..HEAD` to see anything newer.
+**State as of commit `0c840e6` (= origin/main).** `git log 0c840e6..HEAD` shows anything newer.
 
-### THE DEMO IS LIVE
+### THE PLAN IS COMPLETE — the demo is live and finished
 
-**https://dinner-comes-motorola-puerto.trycloudflare.com** — serving from this Linux
-machine: detached `next start` on :3000 (production build at commit `813f2df`),
-`surveyall-tunnel` Docker container (Cloudflare quick tunnel), `surveyall-db-1`
-Postgres container. Survives the Claude session; dies if the machine reboots or the
-tunnel container restarts (URL rotates — rerun `scripts/tunnel.sh`, re-share).
-Start/stop instructions further down in this file. **Auth is deliberately absent**
-(owner decision, DECISIONS 2026-08-29): everything is open, `author_id` is NULL.
+**https://dinner-comes-motorola-puerto.trycloudflare.com**
 
-What the live URL serves right now: home/health page, `/surveys` authoring UI
-(create → edit questions → publish → results), full `/api/v1` authoring + public
-API. The public respond page `/s/<slug>` is committed (WIP) but **not yet in the
-running production build**.
+Everything works end-to-end through that URL: home/health, `/surveys` authoring
+(create → questions → publish → results with tally bars), public respond page
+`/s/<slug>` (all 4 question types), results visibility toggle, closed-survey states.
+46→58 Vitest domain tests, CI green, final whole-branch review (most capable model)
+passed with its fixes merged (input hardening: rating-range DoS bound, length caps
+everywhere, required-multi_choice `[]` bypass, blank-prompt guard).
 
-### Execution state of the plan (11 tasks, subagent-driven)
+**Visual identity:** "Paper Ballot" (owner-approved 2026-08-30) — see the visual
+spec. Tokens in `app/globals.css`, fonts via next/font (Bricolage Grotesque /
+Public Sans / IBM Plex Mono). Signature: OMR fill-in marks on answer options.
 
-Tasks 1–9 **complete, reviewed, green, pushed**: scaffold + ESLint domain boundary;
-Docker Postgres + Drizzle (+`"type":"module"`); health slice; tunnel scripts;
-survey schema (6 tables); survey domain logic (46 Vitest tests); authoring API;
-public respond/results API (rate-limited, ZodError→400); authoring UI.
+**Auth is deliberately absent** (owner decision): everything open, `author_id` NULL.
+Serving: detached `next start` :3000 + `surveyall-tunnel` cloudflared container +
+`surveyall-db-1` Postgres. URL rotates if the tunnel restarts (`scripts/tunnel.sh`
+prints a new one). Stop: `pkill -f "next start"`, `docker rm -f surveyall-tunnel`,
+`docker compose down`.
 
-Task 10 (public respond page) **interrupted mid-verification** — session ended.
-Code committed as WIP (`a8797ea`): `app/s/[slug]/page.tsx`, `respond-form.tsx`,
-`done/page.tsx`. Typechecks; implementer had passed local checks up through
-404-path testing. **Still owed:** task review + fix loop, production rebuild +
-detached restart, through-tunnel verification (GET /s/<slug> 200, POST response
-201, results reflect it). The WIP commit is pushed.
+### Next work (nothing in progress — clean slate)
 
-Task 11 (GitHub Actions CI) **not started** — full workflow YAML is in the plan.
+1. **Fast follow-up (parked from final review):** cap options-per-question on the
+   authoring-UI path (`parseOptions` in `app/(app)/surveys/actions.ts`) — API caps
+   at 20, the UI textarea path doesn't. Two-line guard + inline error.
+2. **Scheduling domain** (When2Meet grid) — next plan; spec §3/§4 of the
+   architecture design already model it.
+3. **Auth** (Auth.js magic link + Google) when the owner wants it — design stands.
+4. **Real deploy** (home server, named tunnel/domain, SMTP, backups) — needs owner
+   accounts/access (architecture spec §7 prerequisites).
 
-Then: final whole-branch review (most capable model) per the SDD process, and the
-deferred-minors triage below.
+### Standing rulings that depend on current posture (revisit when posture changes)
 
-### How to resume (next session, either machine)
+- Rate limiter trusts `CF-Connecting-IP` — valid only while serving is tunnel-only.
+- Fully-open authoring — valid only for the throwaway demo.
+Both get DECISIONS entries when auth/deploy changes the posture.
 
-1. Read this file, then the plan file. On THIS machine the SDD ledger survives at
-   `.superpowers/sdd/2026-08-29-open-demo-survey-vertical/progress.md` (git-ignored)
-   with per-task rulings; on the other machine it won't exist — this section is the
-   digest.
-2. Resume at Task 10's remaining steps (review → fix → prod rebuild/restart →
-   through-tunnel verify), then Task 11, then final review.
-3. **On the Windows machine: do NOT `pnpm install` or `docker compose up` until the
-   repo is moved out of OneDrive** (still pending, and the Postgres named-volume rule
-   in the design §7 applies). The demo can only serve from the Linux machine anyway.
+### Deferred minors (triaged by final review — all deliberately deferred)
 
-### Rulings made this session (owner should skim; each is cheap to reverse)
-
-- Postgres-in-Docker/self-host decisions, auth deferral: in DECISIONS.md (read it).
-- ZodError → HTTP 400 in `lib/api/errors.ts` (client errors are not 500s).
-- Duplicate multi_choice option ids → 422 INVALID_ANSWER (was a public 500).
-- Rate-limiter trusts `CF-Connecting-IP`; spoofable only via direct LAN access —
-  accepted for the open demo (parked).
-- Results-visibility toggle stays usable after a survey closes (spec says results
-  remain readable post-close; plan's "closed = read-only" read down to editor fields).
-- Publish non-draft → SURVEY_CLOSED (409); publish with zero questions →
-  INVALID_ANSWER (422). Slug minting: 3 attempts on collision.
-- `tunnel.sh` uses a bounded 60s retry loop, not the plan's literal `sleep 5`.
-
-### Deferred minors (for the final review to triage)
-
-Duplicated question Zod schema in two route files; list-page N+1 `countResponses`;
-results page double-loads survey; rate-limiter Map never fully evicts keys;
-`clientToken` length unbounded; zod `flatten()` deprecated; no `ipHashFrom` unit
-test; eslint config quote-style mix; tally rating-bucket inner loop O(range×n);
-TOCTOU on status guards (accepted for single container).
-
-### Demo serving — start/stop (Linux machine)
-
-- **Start:** `docker compose up -d db` → `scripts/serve.sh` (foreground; to detach:
-  `corepack pnpm build` then `setsid nohup corepack pnpm start > /tmp/surveyall-app.log 2>&1 &`)
-  → `scripts/tunnel.sh` (prints the public URL; rotates each run).
-- **Stop:** kill the `next start` process (`pkill -f "next start"`),
-  `docker rm -f surveyall-tunnel`, `docker compose down`.
-
-### Blockers / needs owner
-
-- Production deploy proper (home server, named tunnel/domain, prod SMTP, backups)
-  still needs the accounts/access listed in design §7 — untouched this session.
-- Scheduling domain: not started; next plan after this one finishes.
+Duplicated question Zod schema (2 route files) · STATUS_CHIP/qNumber duplicated in
+UI files · list-page N+1 countResponses · results page double survey load ·
+rate-limiter Map never fully evicts · zod flatten() deprecated · no ipHashFrom test ·
+relative-path escape of the lib/db lint guard (package bans are airtight) ·
+malformed JSON → 500 not 400 · respondent results links point at raw JSON ·
+zero-option choice questions publishable · client_token cookie read but never set ·
+IP_HASH_SALT missing → unsalted (set it in prod) · tally inner-loop O(range×n)
+(range now ≤10) · Windows-machine OneDrive relocation still pending before any
+install there.
