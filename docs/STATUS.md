@@ -10,69 +10,70 @@ memory of the last one — nothing survives except what is committed here.
 | `docs/STATUS.md` (this file) | **Rewritten** each session | Where the project stands, what is next, what is blocked |
 | `docs/DECISIONS.md` | **Append-only — never rewrite** | Every decision and the reasoning behind it |
 | `docs/superpowers/specs/` | Frozen once written | Architecture: `2026-08-29-surveyall-design.md`. Visual: `2026-08-30-surveyall-visual-design.md` |
-| `docs/superpowers/plans/2026-08-29-open-demo-survey-vertical.md` | **COMPLETE** | The executed build plan (11 tasks + design pass) |
+| `docs/superpowers/plans/` | Executed | `2026-08-29-open-demo-survey-vertical.md` (11 tasks) and `2026-08-30-ux-round-2.md` — both **COMPLETE** |
 
 ### Conventions settled in practice
 
 - **Pushing:** direct to `main` (owner's call); full-autonomy pushes authorized 2026-08-29.
 - **pnpm:** `corepack pnpm <cmd>` from repo root (pinned `pnpm@9.15.0`; Node 20 here).
-- **Commands:** `corepack pnpm typecheck | lint | test | build | db:generate | db:migrate`.
-  CI (GitHub Actions) runs all of these + migrations against ephemeral Postgres on every
-  push/PR — green as of run 33310733337.
+- **Commands:** `corepack pnpm typecheck | lint | test | build | db:generate | db:migrate`. CI runs all + migrations on ephemeral Postgres per push/PR.
+- **Prod restart gotcha:** never `pkill -f "next start"` from a wrapper whose own command line contains that string — kill the pid from the pidfile or `pgrep -f next-server`.
 - **End of session:** rewrite this file, append DECISIONS if decided, commit, push.
 
 ---
 
-## Last updated: 2026-08-30 end of build (machine: alexander / Linux)
+## Last updated: 2026-08-30 after UX Round 2 (machine: alexander / Linux)
 
-**State as of commit `0c840e6` (= origin/main).** `git log 0c840e6..HEAD` shows anything newer.
+**State as of commit `1a2d3a5` (= origin/main, CI green).**
 
-### THE PLAN IS COMPLETE — the demo is live and finished
+### Live demo — fully working, redesigned twice
 
-**https://dinner-comes-motorola-puerto.trycloudflare.com**
+**https://dinner-comes-motorola-puerto.trycloudflare.com** (rotates if the tunnel
+container restarts — `scripts/tunnel.sh` prints a fresh one).
 
-Everything works end-to-end through that URL: home/health, `/surveys` authoring
-(create → questions → publish → results with tally bars), public respond page
-`/s/<slug>` (all 4 question types), results visibility toggle, closed-survey states.
-46→58 Vitest domain tests, CI green, final whole-branch review (most capable model)
-passed with its fixes merged (input hardening: rating-range DoS bound, length caps
-everywhere, required-multi_choice `[]` bypass, blank-prompt guard).
+Complete flows: authoring (create → questions → publish → share-copy-link →
+results) and public respond (`/s/<slug>`, all 4 question types). Auth deliberately
+absent (owner decision); everything open, `author_id` NULL.
 
-**Visual identity:** "Paper Ballot" (owner-approved 2026-08-30) — see the visual
-spec. Tokens in `app/globals.css`, fonts via next/font (Bricolage Grotesque /
-Public Sans / IBM Plex Mono). Signature: OMR fill-in marks on answer options.
+**UX Round 2 (owner punch list, all shipped + reviewed):** rating config shown only
+for rating type; star rating input + star result summaries; add-question collapsed
+behind a button; publish at the editor bottom with a copy-link share panel; results
+as SVG donut charts (validated palette, honest zeros, multi-choice selection-based
+percentages; free text stays a list); **8 survey themes** (classic/food/business/
+leisure/celebration/education/health/tech — accent + subtle SVG background on public
+pages), theme picker in the editor, `surveys.theme` column (migration 0002).
+Demo lunch survey is set to the food theme.
 
-**Auth is deliberately absent** (owner decision): everything open, `author_id` NULL.
-Serving: detached `next start` :3000 + `surveyall-tunnel` cloudflared container +
-`surveyall-db-1` Postgres. URL rotates if the tunnel restarts (`scripts/tunnel.sh`
-prints a new one). Stop: `pkill -f "next start"`, `docker rm -f surveyall-tunnel`,
-`docker compose down`.
+Final integration review caught and fixed a prod-down bug: closed-survey editor
+500ed (client-module helper called in server render) — fixed in `1a2d3a5`, closed
+editors verified 200 through the tunnel.
 
-### Next work (nothing in progress — clean slate)
+### Test/quality state
 
-1. **Fast follow-up (parked from final review):** cap options-per-question on the
-   authoring-UI path (`parseOptions` in `app/(app)/surveys/actions.ts`) — API caps
-   at 20, the UI textarea path doesn't. Two-line guard + inline error.
-2. **Scheduling domain** (When2Meet grid) — next plan; spec §3/§4 of the
-   architecture design already model it.
-3. **Auth** (Auth.js magic link + Google) when the owner wants it — design stands.
+58 Vitest domain tests green; CI green; every task went through implement → review
+→ fix-loop; two whole-branch reviews (2026-08-30) both closed out with fixes merged.
+
+### Next work (clean slate)
+
+1. Fast follow-ups parked by reviews: options-count cap on the authoring-UI
+   textarea path; dead ternary in donut clamp; `lib/themes.ts` comment points at an
+   untracked report (inline the contrast numbers); `theme` column enum narrowing;
+   star arrow-keys follow reverse-visual DOM order (CSS technique tradeoff);
+   malformed JSON → 500 not 400; respondent results links show raw JSON (a public
+   results page would fix it and complete the design language).
+2. **Scheduling domain** (When2Meet heatmap grid) — next big feature; modeled in
+   architecture spec §3/§4.
+3. **Auth** (Auth.js magic link + Google) — design stands; revisit two standing
+   rulings when posture changes (CF-Connecting-IP trust; fully-open authoring).
 4. **Real deploy** (home server, named tunnel/domain, SMTP, backups) — needs owner
-   accounts/access (architecture spec §7 prerequisites).
+   accounts/access (architecture spec §7).
+5. Owner should tap **Copy link** once on the phone — clipboard write unverifiable
+   from the sandbox (state machine + fallback reviewed correct).
 
-### Standing rulings that depend on current posture (revisit when posture changes)
+### Standing environment notes
 
-- Rate limiter trusts `CF-Connecting-IP` — valid only while serving is tunnel-only.
-- Fully-open authoring — valid only for the throwaway demo.
-Both get DECISIONS entries when auth/deploy changes the posture.
-
-### Deferred minors (triaged by final review — all deliberately deferred)
-
-Duplicated question Zod schema (2 route files) · STATUS_CHIP/qNumber duplicated in
-UI files · list-page N+1 countResponses · results page double survey load ·
-rate-limiter Map never fully evicts · zod flatten() deprecated · no ipHashFrom test ·
-relative-path escape of the lib/db lint guard (package bans are airtight) ·
-malformed JSON → 500 not 400 · respondent results links point at raw JSON ·
-zero-option choice questions publishable · client_token cookie read but never set ·
-IP_HASH_SALT missing → unsalted (set it in prod) · tally inner-loop O(range×n)
-(range now ≤10) · Windows-machine OneDrive relocation still pending before any
-install there.
+Serving: detached `next start` :3000 + `surveyall-tunnel` (cloudflared) +
+`surveyall-db-1` (Postgres :5433, named volume). Stop: kill next-server pid,
+`docker rm -f surveyall-tunnel`, `docker compose down`. Windows machine: repo still
+inside OneDrive — move before any install there. `IP_HASH_SALT` should be set to a
+real value in any non-demo deployment.
