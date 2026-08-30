@@ -24,7 +24,9 @@ memory of the last one — nothing survives except what is committed here.
 
 ## Last updated: 2026-08-30 after respondent-name setting + Open button (machine: alexander / Linux)
 
-**State as of commit `89cf119` (= origin/main, CI green).**
+**State as of commit `89cf119` plus a same-day fix-round commit (privacy-leak
+fix, message fix, test-data cleanup — see below); both on `origin/main`, CI
+green.**
 
 ### Live demo — fully working
 
@@ -52,16 +54,31 @@ NULL.
   "Respondents" line (comma-separated names + "+ N unnamed") when the setting
   isn't `none` and there is at least one response. `getResults` extended
   additively with `respondents: string[]` and `respondentName`.
-  Existing surveys default to `none` — verified unchanged behavior (Team Lunch
-  Preferences demo survey renders no name field, 200 through the tunnel).
+  Existing surveys default to `none` — verified unchanged behavior (the "What
+  youd like for lunch" demo survey renders no name field, 200 through the
+  tunnel). The "Team Lunch Preferences" demo survey was switched to `optional`
+  after verification, deliberately, to demo the feature live to the owner; its
+  5 existing responses predate the feature and so still show as unnamed on the
+  results page ("+ 5 unnamed") until someone responds with a name.
+
+**Review fix round 1 (same session):** code review on commit `89cf119` caught a
+live privacy leak — `GET /api/v1/surveys/[id]/results` returned `getResults()`
+unfiltered, exposing respondent names over an unauthenticated API regardless of
+`show_results_to_respondents`; fixed by whitelisting that route's JSON to
+`{ responseCount, results }` (the authoring results *page* still gets names via
+the server-side `getResults()` call, unaffected). Also fixed
+`validateRespondentName` throwing the wrong message ("name is too long…") for a
+non-string name — now `'name must be text'` — with an added/updated test.
 
 ### Test/quality state
 
-72 Vitest tests green (58 baseline + 14 new respondent-name domain tests);
-typecheck/lint/build all green; verified end-to-end via curl against a local dev
-server on :3100 (required/optional/none settings, 422-on-missing-required,
-201-with-name, DB row contents, results-page rendering, editor UI) before
-redeploying prod.
+73 Vitest tests green (58 baseline + 15 new respondent-name domain tests, one
+added in the fix round for the "name must be text" message); typecheck/lint/build
+all green; verified end-to-end via curl against a local dev server on :3100
+(required/optional/none settings, 422-on-missing-required, 201-with-name, DB row
+contents, results-page rendering, editor UI) before redeploying prod. The four
+throwaway surveys created for manual verification ("Name Test Required/Optional/
+None" and "Where to go") were deleted from the demo DB in the fix round.
 
 ### Next work (clean slate)
 

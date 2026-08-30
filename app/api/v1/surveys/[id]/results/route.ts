@@ -6,6 +6,6 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   return handle(async () => {
     const { id } = await params;
     const result = await getResults(id);
-    return NextResponse.json(result);
+    return NextResponse.json({ responseCount: result.responseCount, results: result.results });
   });
 }

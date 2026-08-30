@@ -18,7 +18,11 @@ export function validateRespondentName(setting: RespondentNameSetting, name: unk
     return null;
   }
 
-  if (typeof name !== 'string' || name.trim().length > NAME_MAX) {
+  if (typeof name !== 'string') {
+    throw new DomainError('INVALID_ANSWER', 'name must be text');
+  }
+
+  if (name.trim().length > NAME_MAX) {
     throw new DomainError('INVALID_ANSWER', 'name is too long (max 100 characters)');
   }
 

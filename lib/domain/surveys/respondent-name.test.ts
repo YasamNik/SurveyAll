@@ -28,6 +28,7 @@ describe('validateRespondentName', () => {
 
     it('rejects a non-string name', () => {
       expect(() => validateRespondentName('optional', 123)).toThrow(DomainError);
+      expect(() => validateRespondentName('optional', 123)).toThrow('name must be text');
     });
 
     it('accepts a name at exactly the 100-character cap after trimming', () => {
@@ -56,6 +57,7 @@ describe('validateRespondentName', () => {
 
     it('rejects a non-string name', () => {
       expect(() => validateRespondentName('required', [])).toThrow(DomainError);
+      expect(() => validateRespondentName('required', [])).toThrow('name must be text');
     });
 
     it('rejects a name over the 100-character cap after trimming', () => {
@@ -82,6 +84,17 @@ describe('validateRespondentName', () => {
       expect(e).toBeInstanceOf(DomainError);
       expect((e as DomainError).code).toBe('INVALID_ANSWER');
       expect((e as DomainError).message).toBe('name is too long (max 100 characters)');
+    }
+  });
+
+  it('throws INVALID_ANSWER with "name must be text" for a non-string name', () => {
+    try {
+      validateRespondentName('optional', 123);
+      expect.unreachable();
+    } catch (e) {
+      expect(e).toBeInstanceOf(DomainError);
+      expect((e as DomainError).code).toBe('INVALID_ANSWER');
+      expect((e as DomainError).message).toBe('name must be text');
     }
   });
 });
