@@ -56,6 +56,7 @@ export async function createSurveyAction(formData: FormData): Promise<void> {
 export async function patchSurveyAction(surveyId: string, formData: FormData): Promise<void> {
   const title = String(formData.get('title') ?? '').trim();
   const description = String(formData.get('description') ?? '').trim();
+  if (!title) toEditor(surveyId, { error: 'Title is required', section: 'details' });
   try {
     await patchSurvey(surveyId, { title, description });
   } catch (e) {
@@ -79,6 +80,7 @@ export async function toggleResultsAction(surveyId: string, next: boolean): Prom
 
 export async function addQuestionAction(surveyId: string, formData: FormData): Promise<void> {
   const input = parseQuestionInput(formData, []);
+  if (!input.prompt) toEditor(surveyId, { error: 'Prompt is required', section: 'add-question' });
   try {
     await addQuestion(surveyId, input);
   } catch (e) {
