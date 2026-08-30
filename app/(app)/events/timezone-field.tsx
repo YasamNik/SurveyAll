@@ -46,7 +46,7 @@ export function TimezoneField({ name = 'authorTimezone' }: { name?: string }) {
   const zones = supportedTimezones();
 
   return (
-    <div className="flex flex-col gap-1">
+    <label className="flex flex-col gap-1">
       <span className="field-label">Time zone</span>
       {changing ? (
         zones.length > 0 ? (
@@ -69,6 +69,6 @@ export function TimezoneField({ name = 'authorTimezone' }: { name?: string }) {
           </button>
         </div>
       )}
-    </div>
+    </label>
   );
 }
