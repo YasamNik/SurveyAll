@@ -1,8 +1,17 @@
 'use client';
 
-import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
-import { HEATMAP_GREENS, dayKeyOf, dayLabelOf, dayLabelShortOf, heatmapBg, timeKeyOf } from './grid-locale';
+import {
+  HEATMAP_GREENS,
+  LONG_PRESS_MS,
+  dayKeyOf,
+  dayLabelOf,
+  dayLabelShortOf,
+  exceedsTouchSlop,
+  heatmapBg,
+  timeKeyOf,
+} from './grid-locale';
 
 type HeatmapSlot = { slot: string; count: number; names: string[] };
 type Heatmap = { participantCount: number; slots: HeatmapSlot[] };
@@ -48,8 +57,22 @@ export function AvailabilityGrid({
 
   const [popover, setPopover] = useState<{ iso: string; top: number; left: number } | null>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
-  const gridRef = useRef<HTMLDivElement>(null);
+  const gridRef = useRef<HTMLDivElement | null>(null);
   const dragModeRef = useRef<'add' | 'erase' | null>(null);
+
+  // Touch-only gesture disambiguation (paint mode): a touch doesn't start
+  // painting immediately — it arms a long-press timer so a swipe can still
+  // scroll the page. `paintingRef` gates the non-passive touchmove listener
+  // below (it can only preventDefault — and so block scroll — once a hold has
+  // actually turned into painting). `longPressRef` tracks the pending hold.
+  const paintingRef = useRef(false);
+  const longPressRef = useRef<{
+    pointerId: number;
+    iso: string;
+    startX: number;
+    startY: number;
+    timer: ReturnType<typeof setTimeout>;
+  } | null>(null);
 
   const { days, times, cellByKey } = useMemo(() => {
     const dayMap = new Map<string, { dayLabel: string; dayLabelShort: string }>();
@@ -117,25 +140,110 @@ export function AvailabilityGrid({
     });
   }
 
+  // The grid div can unmount/remount (the "no availability yet" heatmap empty
+  // state replaces it entirely), so the non-passive touchmove listener is
+  // attached via a callback ref rather than a mount-only effect — that keeps
+  // it correctly attached across those swaps instead of only firing once.
+  const setGridRef = useCallback((node: HTMLDivElement | null) => {
+    gridRef.current = node;
+    if (!node) return;
+    // React's pointer/touch handlers are passive by default, so preventDefault
+    // has to happen on a manually-attached, non-passive touchmove listener.
+    // It only blocks the browser's native scroll once a hold has turned into
+    // painting (paintingRef) — before that, touchmove is left alone so a
+    // swipe scrolls normally.
+    function onTouchMove(e: TouchEvent) {
+      if (paintingRef.current) e.preventDefault();
+    }
+    node.addEventListener('touchmove', onTouchMove, { passive: false });
+    return () => node.removeEventListener('touchmove', onTouchMove);
+  }, []);
+
+  function clearLongPress() {
+    if (longPressRef.current) {
+      clearTimeout(longPressRef.current.timer);
+      longPressRef.current = null;
+    }
+  }
+
+  // Shared by mouse/pen (immediate) and touch (after the long-press fires):
+  // decide add-vs-erase from the starting cell, capture the pointer, apply it.
+  function beginPaintDrag(iso: string, pointerId: number) {
+    const startMode: 'add' | 'erase' = painted.has(iso) ? 'erase' : 'add';
+    dragModeRef.current = startMode;
+    try {
+      gridRef.current?.setPointerCapture(pointerId);
+    } catch {
+      // The pointer may no longer be active (e.g. a cancel raced the
+      // long-press timer) — painting still works via elementFromPoint
+      // hit-testing in handlePointerMove even without capture.
+    }
+    applyPaint(iso, startMode);
+  }
+
   function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
     if (effectiveMode !== 'paint') return;
     const iso = isoFromElement(e.target as Element);
     if (!iso) return;
-    e.preventDefault();
-    const startMode: 'add' | 'erase' = painted.has(iso) ? 'erase' : 'add';
-    dragModeRef.current = startMode;
-    gridRef.current?.setPointerCapture(e.pointerId);
-    applyPaint(iso, startMode);
+
+    if (e.pointerType !== 'touch') {
+      // Mouse/pen: unchanged immediate drag-paint.
+      e.preventDefault();
+      beginPaintDrag(iso, e.pointerId);
+      return;
+    }
+
+    // Touch: don't paint yet — a swipe on this cell should scroll the page.
+    // Arm a long-press timer; if the finger is still within slop when it
+    // fires, that's a hold, and painting starts then (see the timer body).
+    const { pointerId, clientX, clientY } = e;
+    clearLongPress();
+    longPressRef.current = {
+      pointerId,
+      iso,
+      startX: clientX,
+      startY: clientY,
+      timer: setTimeout(() => {
+        if (!longPressRef.current || longPressRef.current.pointerId !== pointerId) return;
+        longPressRef.current = null;
+        paintingRef.current = true;
+        beginPaintDrag(iso, pointerId);
+        navigator.vibrate?.(10);
+      }, LONG_PRESS_MS),
+    };
   }
 
   function handlePointerMove(e: React.PointerEvent<HTMLDivElement>) {
-    if (effectiveMode !== 'paint' || !dragModeRef.current) return;
+    if (effectiveMode !== 'paint') return;
+
+    const pending = longPressRef.current;
+    if (pending && pending.pointerId === e.pointerId) {
+      // Still waiting on the hold: if the finger has wandered past the slop,
+      // this is a scroll, not a paint — drop the timer and let the browser
+      // handle it (a pointercancel typically follows; state is already clear).
+      if (exceedsTouchSlop(e.clientX - pending.startX, e.clientY - pending.startY)) {
+        clearLongPress();
+      }
+      return;
+    }
+
+    if (!dragModeRef.current) return;
     const target = document.elementFromPoint(e.clientX, e.clientY);
     const iso = isoFromElement(target);
     if (iso) applyPaint(iso, dragModeRef.current);
   }
 
   function handlePointerUp(e: React.PointerEvent<HTMLDivElement>) {
+    const pending = longPressRef.current;
+    if (pending && pending.pointerId === e.pointerId) {
+      // Lifted before the long-press fired: a plain tap — toggle the cell.
+      // (The subsequent native `click` this produces is ignored by
+      // handleCellKeyboardClick's e.detail check below, so this can't
+      // double-toggle.)
+      clearLongPress();
+      applyPaint(pending.iso, painted.has(pending.iso) ? 'erase' : 'add');
+    }
+    paintingRef.current = false;
     dragModeRef.current = null;
     try {
       gridRef.current?.releasePointerCapture(e.pointerId);
@@ -144,11 +252,23 @@ export function AvailabilityGrid({
     }
   }
 
+  function handlePointerCancel(e: React.PointerEvent<HTMLDivElement>) {
+    clearLongPress();
+    paintingRef.current = false;
+    dragModeRef.current = null;
+    try {
+      gridRef.current?.releasePointerCapture(e.pointerId);
+    } catch {
+      // capture may already have been released — no-op.
+    }
+  }
+
   function handleCellKeyboardClick(e: React.MouseEvent<HTMLButtonElement>, iso: string) {
     if (effectiveMode !== 'paint') return;
     // e.detail === 0 marks a keyboard-triggered click (Enter/Space); real pointer
-    // taps are already handled by pointerdown above, so skip those here to avoid
-    // double-toggling.
+    // taps/clicks are already handled above (mouse: pointerdown; touch: a tap
+    // resolved in handlePointerUp before the long-press timer fires), so skip
+    // those here to avoid double-toggling.
     if (e.detail !== 0) return;
     applyPaint(iso, painted.has(iso) ? 'erase' : 'add');
   }
@@ -219,13 +339,13 @@ export function AvailabilityGrid({
       ) : (
         <div className="avail-scroll">
           <div
-            ref={gridRef}
+            ref={setGridRef}
             className="avail-grid"
             style={{ gridTemplateColumns: `auto repeat(${days.length}, min-content)` }}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}
-            onPointerCancel={handlePointerUp}
+            onPointerCancel={handlePointerCancel}
           >
             <div className="avail-corner" />
             {days.map((day) => (
@@ -319,25 +439,28 @@ export function AvailabilityGrid({
       )}
 
       {effectiveMode === 'paint' && (
-        <div className="avail-actions flex flex-col gap-2">
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              className="btn btn-primary"
-              disabled={saveState === 'saving' || !dirty}
-              onClick={handleSave}
-            >
-              {saveState === 'saving' ? 'Saving…' : 'Save availability'}
-            </button>
-            {dirty && <span className="text-pencil text-sm">Unsaved changes</span>}
-            {!dirty && saveState === 'saved' && <span className="text-stamp text-sm">Saved ✓</span>}
+        <>
+          <p className="avail-touch-hint text-pencil text-sm">Tap to toggle · hold, then drag to paint</p>
+          <div className="avail-actions flex flex-col gap-2">
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                className="btn btn-primary"
+                disabled={saveState === 'saving' || !dirty}
+                onClick={handleSave}
+              >
+                {saveState === 'saving' ? 'Saving…' : 'Save availability'}
+              </button>
+              {dirty && <span className="text-pencil text-sm">Unsaved changes</span>}
+              {!dirty && saveState === 'saved' && <span className="text-stamp text-sm">Saved ✓</span>}
+            </div>
+            {saveState === 'error' && saveError && (
+              <p role="alert" className="error-strip">
+                {saveError}
+              </p>
+            )}
           </div>
-          {saveState === 'error' && saveError && (
-            <p role="alert" className="error-strip">
-              {saveError}
-            </p>
-          )}
-        </div>
+        </>
       )}
     </section>
   );

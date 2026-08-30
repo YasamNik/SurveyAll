@@ -484,7 +484,10 @@ body {
     gap: 2px;
     padding: 0.5rem;
     width: fit-content;
-    touch-action: none;
+    /* Native panning stays on (touch scroll works); paint-mode's long-press
+       gesture blocks it only once a hold turns into painting, via a
+       non-passive touchmove listener — see availability-grid.tsx. */
+    touch-action: pan-x pan-y;
   }
 
   .avail-corner {
@@ -584,6 +587,18 @@ body {
       background: var(--card);
       border-top: 1px solid var(--rule);
       padding: 0.75rem 0 calc(0.75rem + env(safe-area-inset-bottom));
+    }
+  }
+
+  /* ---- Touch gesture hint (paint mode, coarse pointers only) ---- */
+
+  .avail-touch-hint {
+    display: none;
+  }
+
+  @media (pointer: coarse) {
+    .avail-touch-hint {
+      display: block;
     }
   }
 

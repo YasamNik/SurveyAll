@@ -77,3 +77,19 @@ export function heatmapBg(count: number, participantCount: number): string | und
   if (step === null) return undefined;
   return HEATMAP_GREENS[step];
 }
+
+// Touch gesture disambiguation (paint mode, touch pointers only): a finger has
+// to hold still for LONG_PRESS_MS before a touch starts painting, so a quick
+// swipe scrolls the page instead. "Held still" allows up to TOUCH_SLOP_PX of
+// wobble — real fingers rarely stay at the exact pixel they landed on.
+export const LONG_PRESS_MS = 350;
+export const TOUCH_SLOP_PX = 8;
+
+/**
+ * Whether a touch has moved far enough from its start point (straight-line
+ * distance, not either axis alone) to cancel a pending long-press — the
+ * gesture is read as a scroll, not a paint-hold.
+ */
+export function exceedsTouchSlop(dx: number, dy: number, slop: number = TOUCH_SLOP_PX): boolean {
+  return Math.hypot(dx, dy) > slop;
+}

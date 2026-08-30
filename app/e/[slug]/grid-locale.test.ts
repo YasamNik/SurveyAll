@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { dayKeyOf, dayLabelOf, timeKeyOf, heatmapStep, heatmapBg, HEATMAP_GREENS } from './grid-locale';
+import {
+  dayKeyOf,
+  dayLabelOf,
+  timeKeyOf,
+  heatmapStep,
+  heatmapBg,
+  HEATMAP_GREENS,
+  exceedsTouchSlop,
+  TOUCH_SLOP_PX,
+} from './grid-locale';
 
 describe('dayKeyOf / dayLabelOf / timeKeyOf', () => {
   it('buckets a known instant in a fixed zone (America/Toronto)', () => {
@@ -92,5 +101,35 @@ describe('heatmapStep / heatmapBg', () => {
   it('heatmapBg renders the green swatch matching the banded step', () => {
     expect(heatmapBg(1, 4)).toBe(HEATMAP_GREENS[0]);
     expect(heatmapBg(4, 4)).toBe(HEATMAP_GREENS[3]);
+  });
+});
+
+describe('exceedsTouchSlop', () => {
+  it('is false with no movement', () => {
+    expect(exceedsTouchSlop(0, 0)).toBe(false);
+  });
+
+  it('is false exactly at the slop boundary, on either axis', () => {
+    expect(exceedsTouchSlop(TOUCH_SLOP_PX, 0)).toBe(false);
+    expect(exceedsTouchSlop(0, TOUCH_SLOP_PX)).toBe(false);
+  });
+
+  it('is true just past the slop boundary', () => {
+    expect(exceedsTouchSlop(TOUCH_SLOP_PX + 1, 0)).toBe(true);
+  });
+
+  it('is true regardless of direction (negative deltas)', () => {
+    expect(exceedsTouchSlop(-(TOUCH_SLOP_PX + 1), 0)).toBe(true);
+  });
+
+  it('combines dx/dy as a straight-line distance, not either axis alone', () => {
+    // Neither axis alone exceeds the 8px slop, but the combined distance
+    // (hypot(6, 6) ≈ 8.49) does.
+    expect(exceedsTouchSlop(6, 6)).toBe(true);
+  });
+
+  it('respects a custom slop', () => {
+    expect(exceedsTouchSlop(15, 0, 20)).toBe(false);
+    expect(exceedsTouchSlop(25, 0, 20)).toBe(true);
   });
 });
