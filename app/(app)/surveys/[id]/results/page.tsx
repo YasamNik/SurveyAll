@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { getResults, getSurveyWithQuestions } from '@/lib/db/queries/surveys';
+import { DonutChart } from '@/app/components/donut-chart';
+import { Stars } from '@/app/components/stars';
 
 export const dynamic = 'force-dynamic';
 
@@ -38,8 +40,15 @@ export default async function SurveyResultsPage(props: PageProps<'/surveys/[id]/
       ) : (
         <div className="flex flex-col gap-6">
           {results.map((r, i) => {
-            const optionMax = r.optionCounts ? Math.max(...r.optionCounts.map((o) => o.count), 0) : 0;
             const ratingMax = r.ratingCounts ? Math.max(...r.ratingCounts.map((rc) => rc.count), 0) : 0;
+            const ratingMin = r.ratingCounts?.[0]?.value ?? 0;
+            const ratingScaleMax = r.ratingCounts?.[r.ratingCounts.length - 1]?.value ?? 0;
+            const starCount = ratingScaleMax - ratingMin + 1;
+            const answeredCount = r.ratingCounts?.reduce((sum, rc) => sum + rc.count, 0) ?? 0;
+            const filledStars =
+              r.ratingAverage != null
+                ? Math.min(starCount, Math.max(0, Math.round(r.ratingAverage) - ratingMin + 1))
+                : 0;
 
             return (
               <div key={r.questionId} className="card p-6">
@@ -49,19 +58,7 @@ export default async function SurveyResultsPage(props: PageProps<'/surveys/[id]/
                 </h2>
 
                 {r.optionCounts && (
-                  <ul className="flex flex-col gap-3">
-                    {r.optionCounts.map((o) => (
-                      <li key={o.optionId} className="flex flex-col gap-1">
-                        <div className="flex items-baseline justify-between gap-3">
-                          <span className="text-sm">{o.label}</span>
-                          <span className="font-mono text-sm shrink-0">{o.count}</span>
-                        </div>
-                        <div className="tally-track">
-                          {o.count > 0 && <div className="tally-fill" style={{ width: `${pct(o.count, optionMax)}%` }} />}
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
+                  <DonutChart options={r.optionCounts} multi={r.type === 'multi_choice'} />
                 )}
 
                 {r.texts &&
@@ -78,10 +75,15 @@ export default async function SurveyResultsPage(props: PageProps<'/surveys/[id]/
                   ))}
 
                 {r.ratingAverage !== undefined && (
-                  <div className="flex flex-col gap-3">
-                    <p className="font-mono text-sm">
-                      Average: {r.ratingAverage === null ? '—' : r.ratingAverage.toFixed(2)}
-                    </p>
+                  <div className="flex flex-col gap-4">
+                    <div className="flex items-center gap-3">
+                      <Stars value={filledStars} max={starCount} />
+                      <span className="font-mono text-sm text-pencil">
+                        {r.ratingAverage === null
+                          ? 'No answers yet'
+                          : `${r.ratingAverage.toFixed(1)} average · ${answeredCount} answer${answeredCount === 1 ? '' : 's'}`}
+                      </span>
+                    </div>
                     {r.ratingCounts && (
                       <ul className="flex flex-col gap-3">
                         {r.ratingCounts.map((rc) => (

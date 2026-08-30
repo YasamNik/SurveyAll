@@ -332,4 +332,76 @@ body {
     background: var(--stamp);
     border-radius: 2px;
   }
+
+  /* ---- Donut charts (results) ---- */
+
+  .donut-chart {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1.25rem;
+  }
+
+  .donut-svg {
+    flex-shrink: 0;
+    width: 128px;
+    height: 128px;
+  }
+
+  .donut-total-text,
+  .donut-empty-text {
+    font-family: var(--font-mono);
+  }
+
+  .donut-total-text {
+    font-size: 30px;
+    font-weight: 600;
+    fill: var(--ink);
+  }
+
+  .donut-empty-text {
+    font-size: 13px;
+    fill: var(--pencil);
+  }
+
+  .donut-legend {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    flex: 1 1 200px;
+    min-width: 180px;
+  }
+
+  .donut-legend-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .donut-swatch {
+    flex-shrink: 0;
+    width: 12px;
+    height: 12px;
+    border-radius: 2px;
+    border: 1.5px solid;
+  }
+
+  .donut-legend-label {
+    flex: 1;
+    color: var(--ink);
+    font-size: 0.875rem;
+  }
+
+  .donut-legend-count {
+    flex-shrink: 0;
+    font-family: var(--font-mono);
+    font-size: 0.8125rem;
+    color: var(--pencil);
+  }
+
+  .donut-note {
+    margin-top: 0.5rem;
+    color: var(--pencil);
+    font-size: 0.8125rem;
+  }
 }
