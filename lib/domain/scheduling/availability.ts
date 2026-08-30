@@ -12,6 +12,9 @@ export function validatePaintedSlots(grid: string[], painted: unknown): string[]
   if (painted.some((slot) => typeof slot !== 'string')) {
     throw new DomainError('INVALID_ANSWER', 'painted slots must be strings');
   }
+  if (painted.length > grid.length) {
+    throw new DomainError('INVALID_ANSWER', 'too many slots');
+  }
 
   const gridSet = new Set(grid);
   const deduped = Array.from(new Set(painted as string[]));

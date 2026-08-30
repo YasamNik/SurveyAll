@@ -46,6 +46,18 @@ describe('validatePaintedSlots — happy paths', () => {
   });
 });
 
+describe('validatePaintedSlots — length cap', () => {
+  it('accepts an array exactly grid.length long', () => {
+    const result = validatePaintedSlots(grid, [...grid]);
+    expect(result).toHaveLength(grid.length);
+  });
+
+  it('rejects an oversized, duplicate-heavy array before paying dedup cost', () => {
+    const huge = new Array(1_000_000).fill(grid[0]);
+    expectInvalidAnswer(() => validatePaintedSlots(grid, huge));
+  });
+});
+
 describe('validatePaintedSlots — throws INVALID_ANSWER', () => {
   it('rejects a slot outside the event grid', () => {
     expectInvalidAnswer(() => validatePaintedSlots(grid, ['2026-06-01T09:00:00.000Z', '1999-01-01T00:00:00.000Z']));
