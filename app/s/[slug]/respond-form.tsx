@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { QuestionWithOptions } from '@/lib/domain/surveys/types';
+import { Star } from '@/app/components/stars';
 
 type AnswerValue = string | string[] | number;
 
@@ -16,6 +17,11 @@ function ratingValues(q: QuestionWithOptions): number[] {
   const values: number[] = [];
   for (let v = min; v <= max; v++) values.push(v);
   return values;
+}
+
+function ratingMax(q: QuestionWithOptions): number {
+  const values = ratingValues(q);
+  return values[values.length - 1];
 }
 
 function qNumber(i: number): string {
@@ -158,19 +164,22 @@ export function RespondForm({
           )}
 
           {q.type === 'rating' && (
-            <div className="flex flex-wrap gap-2 mt-3">
-              {ratingValues(q).map((v) => (
-                <label key={v} htmlFor={`${q.id}-${v}`} className="cursor-pointer">
+            <div className="stars-field mt-3">
+              {[...ratingValues(q)].reverse().map((v) => (
+                <Fragment key={v}>
                   <input
                     type="radio"
                     id={`${q.id}-${v}`}
                     name={q.id}
                     value={v}
                     required={q.required}
-                    className="rating-input"
+                    aria-label={`${v} of ${ratingMax(q)}`}
+                    className="stars-option"
                   />
-                  <span className="rating-mark">{v}</span>
-                </label>
+                  <label htmlFor={`${q.id}-${v}`} className="stars-label">
+                    <Star filled={false} />
+                  </label>
+                </Fragment>
               ))}
             </div>
           )}

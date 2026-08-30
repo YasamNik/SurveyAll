@@ -248,9 +248,16 @@ body {
     }
   }
 
-  /* ---- Rating input: square buttons that fill ink when selected ---- */
+  /* ---- Star rating input: visually-hidden radios, SVG star labels ---- */
 
-  .rating-input {
+  .stars-field {
+    display: flex;
+    flex-direction: row-reverse;
+    justify-content: flex-end;
+    gap: 2px;
+  }
+
+  .stars-option {
     position: absolute;
     width: 1px;
     height: 1px;
@@ -262,37 +269,51 @@ body {
     border: 0;
   }
 
-  .rating-mark {
+  .stars-label {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     min-width: 44px;
     min-height: 44px;
-    border: 1.5px solid var(--ink);
-    border-radius: 4px;
-    font-family: var(--font-mono);
-    font-size: 14px;
-    color: var(--ink);
-    background: var(--card);
     cursor: pointer;
-    transition: background-color 120ms ease-in, color 120ms ease-in, border-color 120ms ease-in;
   }
 
-  .rating-input:checked + .rating-mark {
-    background: var(--stamp);
-    border-color: var(--stamp);
-    color: white;
+  .stars-label .star-icon-path {
+    transition: fill 120ms ease-in;
   }
 
-  .rating-input:focus-visible + .rating-mark {
+  /* A checked star fills itself and every star before it (row-reverse + DOM
+     order descending from max means "before it" is every following sibling). */
+  .stars-option:checked ~ .stars-label .star-icon-path {
+    fill: var(--stamp);
+  }
+
+  .stars-label:hover .star-icon-path,
+  .stars-label:hover ~ .stars-label .star-icon-path {
+    fill: var(--stamp);
+  }
+
+  .stars-option:focus-visible + .stars-label {
     outline: 2px solid var(--stamp);
     outline-offset: 2px;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .rating-mark {
+    .stars-label .star-icon-path {
       transition: none;
     }
+  }
+
+  /* ---- Add-question <details>/<summary> — summary styled as a button ---- */
+
+  .add-question-summary {
+    list-style: none;
+    width: fit-content;
+  }
+
+  .add-question-summary::-webkit-details-marker,
+  .add-question-summary::marker {
+    display: none;
   }
 
   /* ---- Tally bars (results) ---- */

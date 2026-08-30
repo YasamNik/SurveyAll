@@ -1,7 +1,8 @@
 import Link from 'next/link';
+import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { getSurveyWithQuestions } from '@/lib/db/queries/surveys';
-import type { QuestionType } from '@/lib/domain/surveys/types';
+import { Star } from '@/app/components/stars';
 import {
   addQuestionAction,
   closeSurveyAction,
@@ -11,25 +12,16 @@ import {
   putQuestionAction,
   toggleResultsAction,
 } from '../actions';
+import { QuestionTypeFields, typeLabel } from './question-type-fields';
+import { SharePanel } from './share-panel';
 
 export const dynamic = 'force-dynamic';
-
-const QUESTION_TYPES: { value: QuestionType; label: string }[] = [
-  { value: 'single_choice', label: 'Single choice' },
-  { value: 'multi_choice', label: 'Multiple choice' },
-  { value: 'free_text', label: 'Free text' },
-  { value: 'rating', label: 'Rating' },
-];
 
 const STATUS_CHIP: Record<string, string> = {
   draft: 'chip-draft',
   published: 'chip-published',
   closed: 'chip-closed',
 };
-
-function typeLabel(type: QuestionType): string {
-  return QUESTION_TYPES.find((t) => t.value === type)?.label ?? type;
-}
 
 function qNumber(i: number): string {
   return String(i + 1).padStart(2, '0');
@@ -48,6 +40,9 @@ export default async function SurveyEditorPage(props: PageProps<'/surveys/[id]'>
   const isDraft = survey.status === 'draft';
   const isClosed = survey.status === 'closed';
   const isPublished = survey.status === 'published';
+
+  const hdrs = await headers();
+  const publicUrl = survey.slug ? `https://${hdrs.get('host') ?? ''}/s/${survey.slug}` : null;
 
   return (
     <main className="max-w-2xl mx-auto px-4 py-10 flex flex-col gap-8">
@@ -113,50 +108,6 @@ export default async function SurveyEditorPage(props: PageProps<'/surveys/[id]'>
         )}
       </section>
 
-      <section className="card p-6 flex flex-col gap-4">
-        <h2 className="text-[18px] font-semibold">Status</h2>
-        {section === 'status' && error && (
-          <p role="alert" className="error-strip">
-            {error}
-          </p>
-        )}
-        {isDraft && (
-          <form action={publishSurveyAction.bind(null, survey.id)}>
-            <button type="submit" className="btn btn-primary">
-              Publish
-            </button>
-          </form>
-        )}
-        {isPublished && survey.slug && (
-          <>
-            <p className="text-sm">
-              Public link:{' '}
-              <a href={`/s/${survey.slug}`} className="btn-link">
-                /s/{survey.slug}
-              </a>
-            </p>
-            <form action={closeSurveyAction.bind(null, survey.id)}>
-              <button type="submit" className="btn btn-flag">
-                Close survey
-              </button>
-            </form>
-          </>
-        )}
-        {isClosed && survey.slug && (
-          <p className="text-sm">
-            Public link (closed):{' '}
-            <a href={`/s/${survey.slug}`} className="btn-link">
-              /s/{survey.slug}
-            </a>
-          </p>
-        )}
-        <p className="text-sm">
-          <Link href={`/surveys/${survey.id}/results`} className="btn-link">
-            View results
-          </Link>
-        </p>
-      </section>
-
       <section className="flex flex-col gap-4">
         <h2 className="text-[18px] font-semibold">Questions</h2>
         {questions.length === 0 && <p className="text-pencil">No questions yet — add your first one.</p>}
@@ -174,7 +125,8 @@ export default async function SurveyEditorPage(props: PageProps<'/surveys/[id]'>
                   <span className="q-number">{qNumber(i)}</span>
                   <span className="font-medium">{q.prompt}</span>
                 </p>
-                <p className="text-sm text-pencil">
+                <p className="text-sm text-pencil flex items-center gap-1">
+                  {q.type === 'rating' && <Star filled />}
                   {typeLabel(q.type)}
                   {q.required ? ' (required)' : ''}
                 </p>
@@ -215,58 +167,14 @@ export default async function SurveyEditorPage(props: PageProps<'/surveys/[id]'>
                   <span>Required</span>
                 </label>
 
-                <div className="flex flex-col gap-1">
-                  <span className="field-label">Type</span>
-                  {isDraft ? (
-                    <select name="type" defaultValue={q.type} className="field-input">
-                      {QUESTION_TYPES.map((t) => (
-                        <option key={t.value} value={t.value}>
-                          {t.label}
-                        </option>
-                      ))}
-                    </select>
-                  ) : (
-                    <>
-                      <input type="hidden" name="type" value={q.type} />
-                      <span className="text-sm text-pencil">{typeLabel(q.type)} (locked)</span>
-                    </>
-                  )}
-                </div>
-
-                {(q.type === 'single_choice' || q.type === 'multi_choice') && (
-                  <label className="flex flex-col gap-1">
-                    <span className="field-label">Options (one per line)</span>
-                    <textarea
-                      name="options"
-                      defaultValue={q.options.map((o) => o.label).join('\n')}
-                      rows={Math.max(3, q.options.length)}
-                      className="field-input"
-                    />
-                  </label>
-                )}
-
-                {q.type === 'rating' && (
-                  <div className="flex gap-4">
-                    <label className="flex flex-col gap-1">
-                      <span className="field-label">Min</span>
-                      <input
-                        type="number"
-                        name="min"
-                        defaultValue={q.config?.min ?? 1}
-                        className="field-input w-20"
-                      />
-                    </label>
-                    <label className="flex flex-col gap-1">
-                      <span className="field-label">Max</span>
-                      <input
-                        type="number"
-                        name="max"
-                        defaultValue={q.config?.max ?? 5}
-                        className="field-input w-20"
-                      />
-                    </label>
-                  </div>
-                )}
+                <QuestionTypeFields
+                  defaultType={q.type}
+                  locked={!isDraft}
+                  defaultOptions={q.options.map((o) => o.label).join('\n')}
+                  optionsRows={Math.max(3, q.options.length)}
+                  defaultMin={q.config?.min ?? 1}
+                  defaultMax={q.config?.max ?? 5}
+                />
 
                 <button type="submit" className="btn btn-primary self-start">
                   Save question
@@ -284,52 +192,60 @@ export default async function SurveyEditorPage(props: PageProps<'/surveys/[id]'>
         ))}
 
         {isDraft && (
-          <div className="border border-dashed border-rule rounded-md p-6">
-            {section === 'add-question' && error && (
-              <p role="alert" className="error-strip mb-3">
-                {error}
-              </p>
-            )}
-            <h3 className="font-semibold mb-3">Add question</h3>
-            <form action={addQuestionAction.bind(null, survey.id)} className="flex flex-col gap-3">
-              <label className="flex flex-col gap-1">
-                <span className="field-label">Prompt</span>
-                <input type="text" name="prompt" required className="field-input" />
-              </label>
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" name="required" className="h-4 w-4" />
-                <span>Required</span>
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="field-label">Type</span>
-                <select name="type" defaultValue="single_choice" className="field-input">
-                  {QUESTION_TYPES.map((t) => (
-                    <option key={t.value} value={t.value}>
-                      {t.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="flex flex-col gap-1">
-                <span className="field-label">Options (one per line, for choice questions)</span>
-                <textarea name="options" rows={3} className="field-input" />
-              </label>
-              <div className="flex gap-4">
+          <details className="add-question" open={section === 'add-question' && !!error}>
+            <summary className="btn btn-secondary add-question-summary">Add question</summary>
+            <div className="border border-dashed border-rule rounded-md p-6 mt-3">
+              {section === 'add-question' && error && (
+                <p role="alert" className="error-strip mb-3">
+                  {error}
+                </p>
+              )}
+              <form action={addQuestionAction.bind(null, survey.id)} className="flex flex-col gap-3">
                 <label className="flex flex-col gap-1">
-                  <span className="field-label">Rating min</span>
-                  <input type="number" name="min" defaultValue={1} className="field-input w-20" />
+                  <span className="field-label">Prompt</span>
+                  <input type="text" name="prompt" required className="field-input" />
                 </label>
-                <label className="flex flex-col gap-1">
-                  <span className="field-label">Rating max</span>
-                  <input type="number" name="max" defaultValue={5} className="field-input w-20" />
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" name="required" className="h-4 w-4" />
+                  <span>Required</span>
                 </label>
-              </div>
-              <button type="submit" className="btn btn-primary self-start">
-                Add question
-              </button>
-            </form>
-          </div>
+                <QuestionTypeFields defaultType="single_choice" />
+                <button type="submit" className="btn btn-primary self-start">
+                  Add question
+                </button>
+              </form>
+            </div>
+          </details>
         )}
+      </section>
+
+      <section className="card p-6 flex flex-col gap-4">
+        <h2 className="text-[18px] font-semibold">Status</h2>
+        {section === 'status' && error && (
+          <p role="alert" className="error-strip">
+            {error}
+          </p>
+        )}
+        {isDraft && (
+          <form action={publishSurveyAction.bind(null, survey.id)}>
+            <button type="submit" className="btn btn-primary">
+              Publish
+            </button>
+          </form>
+        )}
+        {publicUrl && <SharePanel url={publicUrl} closed={isClosed} />}
+        {isPublished && survey.slug && (
+          <form action={closeSurveyAction.bind(null, survey.id)}>
+            <button type="submit" className="btn btn-flag">
+              Close survey
+            </button>
+          </form>
+        )}
+        <p className="text-sm">
+          <Link href={`/surveys/${survey.id}/results`} className="btn-link">
+            View results
+          </Link>
+        </p>
       </section>
     </main>
   );
