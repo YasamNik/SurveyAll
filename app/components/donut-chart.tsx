@@ -1,6 +1,8 @@
 // Hand-rolled SVG donut chart for choice-question results (Task B). Server-renderable —
 // no client JS. Hover tooltips come from native SVG <title> elements. The ring is
 // decorative (aria-hidden); the legend below it is the accessible representation.
+// Gaps between slices are unpainted arc — render inside an ancestor with a --card
+// background so the gap reads as intentional, not as a rendering artifact.
 // Palette + rules: docs/superpowers/specs/2026-08-30-surveyall-visual-design.md
 
 const PALETTE = ['#3D46B2', '#00806A', '#9A6A00', '#A0338A', '#5F7011', '#2E6FB8'];
@@ -64,14 +66,16 @@ export function DonutChart({ options, multi }: { options: DonutOption[]; multi?:
   let offset = 0;
   const arcs = visible.map((o) => {
     const rawLength = (o.count / total) * CIRCUMFERENCE;
-    const trimmed = visible.length > 1 ? Math.max(rawLength - GAP, 0) : rawLength;
+    // Every count>0 option must stay hoverable/visible — never let a tiny share
+    // trim away to a 0-length arc, which would be indistinguishable from a true zero.
+    const trimmed = visible.length > 1 ? Math.max(rawLength - GAP, o.count > 0 ? 1 : 0) : rawLength;
     const start = offset + (visible.length > 1 ? GAP / 2 : 0);
     offset += rawLength;
     return { ...o, start, length: trimmed };
   });
 
   return (
-    <div className="donut-wrap">
+    <div>
       <div className="donut-chart">
         <svg viewBox={`0 0 ${SIZE} ${SIZE}`} width={SIZE} height={SIZE} className="donut-svg" aria-hidden="true">
           {total === 0 ? (
