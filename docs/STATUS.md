@@ -67,8 +67,11 @@ editors verified 200 through the tunnel.
    rulings when posture changes (CF-Connecting-IP trust; fully-open authoring).
 4. **Real deploy** (home server, named tunnel/domain, SMTP, backups) — needs owner
    accounts/access (architecture spec §7).
-5. Owner should tap **Copy link** once on the phone — clipboard write unverifiable
-   from the sandbox (state machine + fallback reviewed correct).
+5. Share link now derives from `window.location.origin` client-side (`66fa71e`) —
+   supersedes the earlier Host-header ruling after the owner hit
+   `https://localhost:3000/...` through the tunnel (cloudflared quick tunnels
+   rewrite Host to the origin). Verified through the tunnel: input shows the real
+   public URL. Owner confirmed clipboard copies work on their device.
 
 ### Standing environment notes
 
