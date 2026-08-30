@@ -24,8 +24,7 @@ memory of the last one — nothing survives except what is committed here.
 
 ## Last updated: 2026-08-30 after respondent-name setting + Open button (machine: alexander / Linux)
 
-**State as of commit `b76104d` before this session's work (= origin/main at session
-start, CI green). This session adds one commit on top.**
+**State as of commit `89cf119` (= origin/main, CI green).**
 
 ### Live demo — fully working
 
