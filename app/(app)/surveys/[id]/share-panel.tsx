@@ -1,15 +1,33 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 
 const STATUS_MS = 2000;
 
 type CopyStatus = 'idle' | 'copied' | 'failed';
 
-export function SharePanel({ url, closed }: { url: string; closed: boolean }) {
+// window.location.origin never changes after mount, so there is nothing to
+// subscribe to — this just lets us read it as the client snapshot while
+// falling back to '' on the server (avoiding a hydration mismatch).
+function subscribe() {
+  return () => {};
+}
+
+function getOrigin() {
+  return window.location.origin;
+}
+
+function getServerOrigin() {
+  return '';
+}
+
+export function SharePanel({ path, closed }: { path: string; closed: boolean }) {
   const [status, setStatus] = useState<CopyStatus>('idle');
+  const origin = useSyncExternalStore(subscribe, getOrigin, getServerOrigin);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const inputRef = useRef<HTMLInputElement>(null);
+
+  const url = origin + path;
 
   useEffect(() => () => clearTimeout(timeoutRef.current), []);
 

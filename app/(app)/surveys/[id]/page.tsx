@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { getSurveyWithQuestions } from '@/lib/db/queries/surveys';
 import { Star } from '@/app/components/stars';
@@ -43,9 +42,7 @@ export default async function SurveyEditorPage(props: PageProps<'/surveys/[id]'>
   const isClosed = survey.status === 'closed';
   const isPublished = survey.status === 'published';
 
-  const hdrs = await headers();
-  const proto = hdrs.get('x-forwarded-proto') ?? 'https';
-  const publicUrl = survey.slug ? `${proto}://${hdrs.get('host') ?? ''}/s/${survey.slug}` : null;
+  const publicPath = survey.slug ? `/s/${survey.slug}` : null;
 
   return (
     <main className="max-w-2xl mx-auto px-4 py-10 flex flex-col gap-8">
@@ -246,7 +243,7 @@ export default async function SurveyEditorPage(props: PageProps<'/surveys/[id]'>
             </button>
           </form>
         )}
-        {publicUrl && <SharePanel url={publicUrl} closed={isClosed} />}
+        {publicPath && <SharePanel path={publicPath} closed={isClosed} />}
         {isPublished && survey.slug && (
           <form action={closeSurveyAction.bind(null, survey.id)}>
             <button type="submit" className="btn btn-flag">
