@@ -1,32 +1,40 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
-const COPIED_MS = 2000;
+const STATUS_MS = 2000;
+
+type CopyStatus = 'idle' | 'copied' | 'failed';
 
 export function SharePanel({ url, closed }: { url: string; closed: boolean }) {
-  const [copied, setCopied] = useState(false);
+  const [status, setStatus] = useState<CopyStatus>('idle');
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  function showCopied() {
-    setCopied(true);
+  useEffect(() => () => clearTimeout(timeoutRef.current), []);
+
+  function showStatus(next: CopyStatus) {
+    setStatus(next);
     clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(() => setCopied(false), COPIED_MS);
+    timeoutRef.current = setTimeout(() => setStatus('idle'), STATUS_MS);
   }
 
   async function handleCopy() {
     try {
       await navigator.clipboard.writeText(url);
-      showCopied();
+      showStatus('copied');
+      return;
     } catch {
-      const input = inputRef.current;
-      if (input) {
-        input.select();
-        document.execCommand('copy');
-        showCopied();
-      }
+      // Older browsers / clipboard-write denied — fall through to the
+      // execCommand fallback below rather than assuming success.
     }
+    const input = inputRef.current;
+    let fallbackOk = false;
+    if (input) {
+      input.select();
+      fallbackOk = document.execCommand('copy');
+    }
+    showStatus(fallbackOk ? 'copied' : 'failed');
   }
 
   return (
@@ -42,9 +50,14 @@ export function SharePanel({ url, closed }: { url: string; closed: boolean }) {
           className="field-input flex-1 min-w-0 font-mono text-sm"
         />
         <button type="button" onClick={handleCopy} className="btn btn-secondary">
-          {copied ? 'Copied' : 'Copy link'}
+          {status === 'copied' ? 'Copied' : 'Copy link'}
         </button>
       </div>
+      {status === 'failed' && (
+        <p role="alert" className="error-strip">
+          Copy failed — select the link and copy manually.
+        </p>
+      )}
     </div>
   );
 }
