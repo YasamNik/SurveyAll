@@ -1,0 +1,110 @@
+import { DomainError } from '../shared/errors';
+import { zonedTimeToUtc } from './timezone';
+
+export interface EventWindow {
+  dateStart: string;
+  dateEnd: string;
+  dayStartTime: string;
+  dayEndTime: string;
+  authorTimezone: string;
+}
+
+const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
+const TIME_RE = /^([01]\d|2[0-3]):[0-5]\d$/;
+const MS_PER_DAY = 86_400_000;
+const SLOT_STEP_MINUTES = 30;
+
+export function validateEventWindow(w: EventWindow): void {
+  if (!DATE_RE.test(w.dateStart) || !isRealDate(w.dateStart)) {
+    throw new DomainError('INVALID_ANSWER', 'invalid dateStart');
+  }
+  if (!DATE_RE.test(w.dateEnd) || !isRealDate(w.dateEnd)) {
+    throw new DomainError('INVALID_ANSWER', 'invalid dateEnd');
+  }
+  if (!TIME_RE.test(w.dayStartTime)) {
+    throw new DomainError('INVALID_ANSWER', 'invalid dayStartTime');
+  }
+  if (!TIME_RE.test(w.dayEndTime)) {
+    throw new DomainError('INVALID_ANSWER', 'invalid dayEndTime');
+  }
+
+  const startMs = parseDateUtc(w.dateStart);
+  const endMs = parseDateUtc(w.dateEnd);
+  if (endMs < startMs) {
+    throw new DomainError('INVALID_ANSWER', 'dateEnd must not be before dateStart');
+  }
+  const spanDays = (endMs - startMs) / MS_PER_DAY + 1;
+  if (spanDays > 31) {
+    throw new DomainError('INVALID_ANSWER', 'event window must span at most 31 days');
+  }
+
+  if (w.dayEndTime <= w.dayStartTime) {
+    throw new DomainError('INVALID_ANSWER', 'dayEndTime must be after dayStartTime');
+  }
+
+  // Validates the time zone as a side effect (throws INVALID_ANSWER 'unknown time zone').
+  zonedTimeToUtc(w.dateStart, w.dayStartTime, w.authorTimezone);
+}
+
+export function generateSlots(w: EventWindow): string[] {
+  validateEventWindow(w);
+
+  const slots: string[] = [];
+  for (const date of enumerateDates(w.dateStart, w.dateEnd)) {
+    for (const time of dayTimeSteps(w.dayStartTime, w.dayEndTime)) {
+      slots.push(zonedTimeToUtc(date, time, w.authorTimezone).toISOString());
+    }
+  }
+
+  return Array.from(new Set(slots)).sort();
+}
+
+function isRealDate(date: string): boolean {
+  const [y, m, d] = date.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d));
+  return dt.getUTCFullYear() === y && dt.getUTCMonth() === m - 1 && dt.getUTCDate() === d;
+}
+
+function parseDateUtc(date: string): number {
+  const [y, m, d] = date.split('-').map(Number);
+  return Date.UTC(y, m - 1, d);
+}
+
+function formatDateUtc(ms: number): string {
+  const dt = new Date(ms);
+  const y = dt.getUTCFullYear();
+  const m = String(dt.getUTCMonth() + 1).padStart(2, '0');
+  const d = String(dt.getUTCDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+function enumerateDates(dateStart: string, dateEnd: string): string[] {
+  const start = parseDateUtc(dateStart);
+  const end = parseDateUtc(dateEnd);
+  const dates: string[] = [];
+  for (let t = start; t <= end; t += MS_PER_DAY) {
+    dates.push(formatDateUtc(t));
+  }
+  return dates;
+}
+
+function timeToMinutes(time: string): number {
+  const [h, m] = time.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function minutesToTime(totalMinutes: number): string {
+  const h = Math.floor(totalMinutes / 60);
+  const m = totalMinutes % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
+function dayTimeSteps(dayStartTime: string, dayEndTime: string): string[] {
+  const startMin = timeToMinutes(dayStartTime);
+  const endMin = timeToMinutes(dayEndTime);
+  const times: string[] = [];
+  for (let m = startMin; m < endMin; m += SLOT_STEP_MINUTES) {
+    times.push(minutesToTime(m));
+  }
+  return times;
+}

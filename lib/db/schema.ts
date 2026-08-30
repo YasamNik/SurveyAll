@@ -1,4 +1,4 @@
-import { pgTable, text, timestamp, boolean, integer, doublePrecision, jsonb, uniqueIndex, unique } from 'drizzle-orm/pg-core';
+import { pgTable, text, timestamp, boolean, integer, doublePrecision, jsonb, uniqueIndex, unique, primaryKey } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
 export const users = pgTable('users', {
@@ -63,4 +63,38 @@ export const answers = pgTable('answers', {
   numberValue: doublePrecision('number_value'),
 }, (t) => [
   unique('one_answer_cell').on(t.responseId, t.questionId, t.optionId).nullsNotDistinct(),
+]);
+
+export const scheduleEvents = pgTable('schedule_events', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  authorId: text('author_id').references(() => users.id),
+  title: text('title').notNull(),
+  description: text('description'),
+  slug: text('slug').notNull().unique(),
+  authorTimezone: text('author_timezone').notNull(),
+  dateStart: text('date_start').notNull(),
+  dateEnd: text('date_end').notNull(),
+  dayStartTime: text('day_start_time').notNull(),
+  dayEndTime: text('day_end_time').notNull(),
+  status: text('status', { enum: ['open', 'closed'] }).notNull().default('open'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  closedAt: timestamp('closed_at', { withTimezone: true }),
+});
+
+export const scheduleParticipants = pgTable('schedule_participants', {
+  id: text('id').primaryKey().$defaultFn(() => crypto.randomUUID()),
+  eventId: text('event_id').notNull().references(() => scheduleEvents.id, { onDelete: 'cascade' }),
+  userId: text('user_id').references(() => users.id),
+  displayName: text('display_name').notNull(),
+  clientToken: text('client_token').notNull().unique(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  uniqueIndex('one_participant_per_user').on(t.eventId, t.userId).where(sql`user_id is not null`),
+]);
+
+export const availabilitySlots = pgTable('availability_slots', {
+  participantId: text('participant_id').notNull().references(() => scheduleParticipants.id, { onDelete: 'cascade' }),
+  slotStart: timestamp('slot_start', { withTimezone: true }).notNull(),
+}, (t) => [
+  primaryKey({ columns: [t.participantId, t.slotStart] }),
 ]);
