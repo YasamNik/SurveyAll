@@ -3,17 +3,7 @@
 import { useState } from 'react';
 import type { QuestionType } from '@/lib/domain/surveys/types';
 import { Star } from '@/app/components/stars';
-
-export const QUESTION_TYPES: { value: QuestionType; label: string }[] = [
-  { value: 'single_choice', label: 'Single choice' },
-  { value: 'multi_choice', label: 'Multiple choice' },
-  { value: 'free_text', label: 'Free text' },
-  { value: 'rating', label: 'Rating' },
-];
-
-export function typeLabel(type: QuestionType): string {
-  return QUESTION_TYPES.find((t) => t.value === type)?.label ?? type;
-}
+import { QUESTION_TYPES, typeLabel } from './question-types';
 
 // Question type + the fields whose relevance depends on it (options for choice
 // types, min/max for rating). Server action field names (`type`, `options`,

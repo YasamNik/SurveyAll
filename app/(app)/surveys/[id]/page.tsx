@@ -13,7 +13,8 @@ import {
   putQuestionAction,
   toggleResultsAction,
 } from '../actions';
-import { QuestionTypeFields, typeLabel } from './question-type-fields';
+import { QuestionTypeFields } from './question-type-fields';
+import { typeLabel } from './question-types';
 import { SharePanel } from './share-panel';
 
 export const dynamic = 'force-dynamic';
@@ -43,7 +44,8 @@ export default async function SurveyEditorPage(props: PageProps<'/surveys/[id]'>
   const isPublished = survey.status === 'published';
 
   const hdrs = await headers();
-  const publicUrl = survey.slug ? `https://${hdrs.get('host') ?? ''}/s/${survey.slug}` : null;
+  const proto = hdrs.get('x-forwarded-proto') ?? 'https';
+  const publicUrl = survey.slug ? `${proto}://${hdrs.get('host') ?? ''}/s/${survey.slug}` : null;
 
   return (
     <main className="max-w-2xl mx-auto px-4 py-10 flex flex-col gap-8">
