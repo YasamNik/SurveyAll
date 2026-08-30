@@ -19,25 +19,29 @@ export default async function RespondPage(props: PageProps<'/s/[slug]'>) {
   const { survey, questions } = data;
 
   return (
-    <main className="max-w-xl mx-auto p-6 flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-bold">{survey.title}</h1>
-        {survey.description && <p className="text-gray-600 mt-1">{survey.description}</p>}
+    <main className="max-w-2xl mx-auto px-4 py-10 flex flex-col gap-6">
+      <div className="flex flex-col gap-2">
+        <p className="serial">№ {slug}</p>
+        <h1 className="font-display font-bold text-[36px] leading-tight">{survey.title}</h1>
+        {survey.description && <p className="text-pencil">{survey.description}</p>}
       </div>
 
       {survey.status === 'closed' ? (
-        <div className="flex flex-col gap-2">
+        <div className="card p-6 flex flex-col gap-2">
           <p>This survey is closed.</p>
           {survey.showResultsToRespondents && (
             <p>
-              <a href={`/api/v1/public/surveys/${slug}/results`} className="text-blue-600 hover:underline">
+              <a href={`/api/v1/public/surveys/${slug}/results`} className="btn-link">
                 View results
               </a>
             </p>
           )}
         </div>
       ) : (
-        <RespondForm survey={{ slug }} questions={questions} />
+        <>
+          <div className="tear-line" />
+          <RespondForm survey={{ slug }} questions={questions} />
+        </>
       )}
     </main>
   );

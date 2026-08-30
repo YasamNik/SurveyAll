@@ -16,11 +16,11 @@ export default async function DonePage(props: PageProps<'/s/[slug]/done'>) {
   }
 
   return (
-    <main className="max-w-xl mx-auto p-6 flex flex-col gap-4">
-      <h1 className="text-2xl font-bold">Thanks — your response was recorded.</h1>
+    <main className="max-w-2xl mx-auto px-4 py-16 flex flex-col items-center gap-4 text-center">
+      <h1 className="font-display font-bold text-[28px]">Thanks — your response was recorded.</h1>
       {survey.showResultsToRespondents && (
         <p>
-          <a href={`/api/v1/public/surveys/${slug}/results`} className="text-blue-600 hover:underline">
+          <a href={`/api/v1/public/surveys/${slug}/results`} className="btn-link">
             View results
           </a>
         </p>

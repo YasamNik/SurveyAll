@@ -1,26 +1,314 @@
 @import "tailwindcss";
 
+/* Paper Ballot design tokens — docs/superpowers/specs/2026-08-30-surveyall-visual-design.md */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --paper: #fafaf7;
+  --ink: #1f2a37;
+  --stamp: #3d46b2;
+  --pencil: #6b7280;
+  --rule: #d8d6ce;
+  --flag: #b4552d;
+  --card: #ffffff;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-stamp: var(--stamp);
+  --color-pencil: var(--pencil);
+  --color-rule: var(--rule);
+  --color-flag: var(--flag);
+  --color-card: var(--card);
+
+  --font-display: var(--font-bricolage), ui-sans-serif, system-ui, sans-serif;
+  --font-sans: var(--font-public-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-plex-mono), ui-monospace, SFMono-Regular, monospace;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  color-scheme: light;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--paper);
+  color: var(--ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--stamp);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---- Components ---- */
+
+@layer components {
+  .card {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 44px;
+    padding: 0.5rem 1.25rem;
+    border-radius: 4px;
+    font-weight: 600;
+    font-size: 0.9375rem;
+    cursor: pointer;
+    transition: background-color 120ms ease-in, border-color 120ms ease-in, opacity 120ms ease-in;
+  }
+
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+
+  .btn-primary {
+    background: var(--stamp);
+    color: white;
+    border: 1px solid var(--stamp);
+  }
+
+  .btn-primary:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--stamp) 88%, black);
+  }
+
+  .btn-secondary {
+    background: transparent;
+    color: var(--ink);
+    border: 1px solid var(--ink);
+  }
+
+  .btn-secondary:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--ink) 6%, transparent);
+  }
+
+  .btn-flag {
+    background: transparent;
+    color: var(--flag);
+    border: 1px solid var(--flag);
+  }
+
+  .btn-flag:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--flag) 8%, transparent);
+  }
+
+  .btn-link {
+    color: var(--stamp);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .btn-link:hover {
+    color: color-mix(in srgb, var(--stamp) 80%, black);
+  }
+
+  .chip {
+    display: inline-flex;
+    align-items: center;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 0.15rem 0.5rem;
+    border-radius: 3px;
+    line-height: 1.4;
+  }
+
+  .chip-draft {
+    color: var(--pencil);
+    border: 1px solid var(--pencil);
+  }
+
+  .chip-published {
+    color: white;
+    background: var(--stamp);
+    border: 1px solid var(--stamp);
+  }
+
+  .chip-closed {
+    color: var(--flag);
+    border: 1px solid var(--flag);
+  }
+
+  .field-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--ink);
+  }
+
+  .field-input {
+    background: var(--paper);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9375rem;
+    color: var(--ink);
+  }
+
+  .field-input:focus-visible {
+    outline: 2px solid var(--stamp);
+    outline-offset: 1px;
+    border-color: var(--stamp);
+  }
+
+  .error-strip {
+    border-left: 2px solid var(--flag);
+    padding: 0.375rem 0 0.375rem 0.75rem;
+    color: var(--flag);
+    font-size: 0.875rem;
+  }
+
+  .q-number {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--pencil);
+    letter-spacing: 0.02em;
+  }
+
+  .tear-line {
+    border-top: 1px dashed var(--rule);
+  }
+
+  .serial {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    color: var(--pencil);
+    letter-spacing: 0.02em;
+  }
+}
+
+/* ---- OMR fill marks: radio + checkbox ---- */
+
+.omr-mark {
+  appearance: none;
+  -webkit-appearance: none;
+  margin: 0;
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid var(--ink);
+  background: var(--card);
+  display: inline-grid;
+  place-content: center;
+  cursor: pointer;
+}
+
+input[type="radio"].omr-mark {
+  border-radius: 50%;
+}
+
+input[type="checkbox"].omr-mark {
+  border-radius: 3px;
+}
+
+.omr-mark::before {
+  content: "";
+  width: 12px;
+  height: 12px;
+  transform: scale(0);
+  transition: transform 120ms ease-in;
+  background: var(--stamp);
+}
+
+input[type="radio"].omr-mark::before {
+  border-radius: 50%;
+}
+
+input[type="checkbox"].omr-mark::before {
+  border-radius: 2px;
+}
+
+.omr-mark:checked::before {
+  transform: scale(1);
+}
+
+.omr-mark:focus-visible {
+  outline: 2px solid var(--stamp);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .omr-mark::before {
+    transition: none;
+  }
+}
+
+/* ---- Rating input: square buttons that fill ink when selected ---- */
+
+.rating-input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.rating-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  border: 1.5px solid var(--ink);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 14px;
+  color: var(--ink);
+  background: var(--card);
+  cursor: pointer;
+  transition: background-color 120ms ease-in, color 120ms ease-in, border-color 120ms ease-in;
+}
+
+.rating-input:checked + .rating-mark {
+  background: var(--stamp);
+  border-color: var(--stamp);
+  color: white;
+}
+
+.rating-input:focus-visible + .rating-mark {
+  outline: 2px solid var(--stamp);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rating-mark {
+    transition: none;
+  }
+}
+
+/* ---- Tally bars (results) ---- */
+
+.tally-track {
+  position: relative;
+  height: 10px;
+  background: var(--rule);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.tally-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--stamp);
+  border-radius: 2px;
 }

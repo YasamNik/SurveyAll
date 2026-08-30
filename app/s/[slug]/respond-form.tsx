@@ -6,12 +6,20 @@ import type { QuestionWithOptions } from '@/lib/domain/surveys/types';
 
 type AnswerValue = string | string[] | number;
 
+const FRIENDLY_ERROR: Record<string, string> = {
+  RATE_LIMITED: 'Too many submissions from this connection. Try again in a minute.',
+};
+
 function ratingValues(q: QuestionWithOptions): number[] {
   const min = q.config?.min ?? 1;
   const max = q.config?.max ?? 5;
   const values: number[] = [];
   for (let v = min; v <= max; v++) values.push(v);
   return values;
+}
+
+function qNumber(i: number): string {
+  return String(i + 1).padStart(2, '0');
 }
 
 export function RespondForm({
@@ -65,9 +73,10 @@ export function RespondForm({
       }
 
       const body: { error?: string; message?: string } | null = await res.json().catch(() => null);
-      setError(body?.message ?? body?.error ?? 'Something went wrong. Please try again.');
+      const code = body?.error;
+      setError(body?.message ?? (code && FRIENDLY_ERROR[code]) ?? 'Something went wrong. Try again.');
     } catch {
-      setError('Network error. Please try again.');
+      setError('Network error. Try again.');
     } finally {
       setSubmitting(false);
     }
@@ -76,28 +85,42 @@ export function RespondForm({
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-6">
       {error && (
-        <p role="alert" className="text-red-600">
+        <p role="alert" className="error-strip">
           {error}
         </p>
       )}
 
-      {questions.map((q) => (
-        <fieldset key={q.id} className="border border-gray-300 rounded p-4">
-          <legend className="font-medium px-1">
-            {q.prompt}
-            {q.required && (
-              <span className="text-red-600" aria-hidden="true">
-                {' '}
-                *
-              </span>
-            )}
+      {questions.map((q, i) => (
+        <fieldset key={q.id} className="card p-6">
+          <legend className="flex items-baseline gap-2 px-1 font-medium">
+            <span className="q-number">{qNumber(i)}</span>
+            <span>
+              {q.prompt}
+              {q.required && (
+                <span className="text-flag" aria-hidden="true">
+                  {' '}
+                  *
+                </span>
+              )}
+            </span>
           </legend>
 
           {q.type === 'single_choice' && (
-            <div className="flex flex-col gap-2 mt-2">
+            <div className="flex flex-col gap-3 mt-3">
               {q.options.map((o) => (
-                <label key={o.id} htmlFor={`${q.id}-${o.id}`} className="flex items-center gap-2">
-                  <input type="radio" id={`${q.id}-${o.id}`} name={q.id} value={o.id} required={q.required} />
+                <label
+                  key={o.id}
+                  htmlFor={`${q.id}-${o.id}`}
+                  className="flex items-center gap-3 min-h-11 cursor-pointer"
+                >
+                  <input
+                    type="radio"
+                    id={`${q.id}-${o.id}`}
+                    name={q.id}
+                    value={o.id}
+                    required={q.required}
+                    className="omr-mark"
+                  />
                   <span>{o.label}</span>
                 </label>
               ))}
@@ -105,10 +128,20 @@ export function RespondForm({
           )}
 
           {q.type === 'multi_choice' && (
-            <div className="flex flex-col gap-2 mt-2">
+            <div className="flex flex-col gap-3 mt-3">
               {q.options.map((o) => (
-                <label key={o.id} htmlFor={`${q.id}-${o.id}`} className="flex items-center gap-2">
-                  <input type="checkbox" id={`${q.id}-${o.id}`} name={q.id} value={o.id} />
+                <label
+                  key={o.id}
+                  htmlFor={`${q.id}-${o.id}`}
+                  className="flex items-center gap-3 min-h-11 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    id={`${q.id}-${o.id}`}
+                    name={q.id}
+                    value={o.id}
+                    className="omr-mark"
+                  />
                   <span>{o.label}</span>
                 </label>
               ))}
@@ -116,28 +149,27 @@ export function RespondForm({
           )}
 
           {q.type === 'free_text' && (
-            <div className="mt-2">
+            <div className="mt-3">
               <label htmlFor={q.id} className="sr-only">
                 {q.prompt}
               </label>
-              <textarea
-                id={q.id}
-                name={q.id}
-                required={q.required}
-                rows={3}
-                className="border rounded px-2 py-1 w-full"
-              />
+              <textarea id={q.id} name={q.id} required={q.required} rows={3} className="field-input w-full" />
             </div>
           )}
 
           {q.type === 'rating' && (
-            <div className="flex gap-2 mt-2">
+            <div className="flex flex-wrap gap-2 mt-3">
               {ratingValues(q).map((v) => (
                 <label key={v} htmlFor={`${q.id}-${v}`} className="cursor-pointer">
-                  <input type="radio" id={`${q.id}-${v}`} name={q.id} value={v} required={q.required} className="peer sr-only" />
-                  <span className="inline-block border rounded px-3 py-1 peer-checked:bg-blue-600 peer-checked:text-white peer-focus-visible:ring-2 peer-focus-visible:ring-blue-400">
-                    {v}
-                  </span>
+                  <input
+                    type="radio"
+                    id={`${q.id}-${v}`}
+                    name={q.id}
+                    value={v}
+                    required={q.required}
+                    className="rating-input"
+                  />
+                  <span className="rating-mark">{v}</span>
                 </label>
               ))}
             </div>
@@ -145,12 +177,8 @@ export function RespondForm({
         </fieldset>
       ))}
 
-      <button
-        type="submit"
-        disabled={submitting}
-        className="self-start bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
-      >
-        {submitting ? 'Submitting…' : 'Submit'}
+      <button type="submit" disabled={submitting} className="btn btn-primary self-start">
+        {submitting ? 'Submitting…' : 'Submit answers'}
       </button>
     </form>
   );

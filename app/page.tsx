@@ -7,13 +7,20 @@ export const dynamic = 'force-dynamic';
 export default async function Home() {
   const dbOk = await pingDb();
   const health = buildHealthReport(dbOk, new Date());
+  const chipClass = health.status === 'ok' ? 'chip-published' : 'chip-closed';
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-white">
-      <h1 className="text-2xl font-bold mb-4">SurveyAll — status: {health.status}</h1>
-      <Link href="/surveys" className="text-blue-600 hover:text-blue-800 underline">
-        Go to Surveys
+    <main className="max-w-2xl mx-auto px-4 py-16 flex flex-col items-center gap-8 text-center">
+      <div className="flex flex-col gap-2">
+        <h1 className="font-display font-bold text-[28px]">SurveyAll</h1>
+        <p className="text-pencil">Surveys and calendar scheduling for a group.</p>
+      </div>
+
+      <p className={`chip ${chipClass}`}>Status: {health.status}</p>
+
+      <Link href="/surveys" className="btn btn-primary">
+        Go to surveys
       </Link>
-    </div>
+    </main>
   );
 }
