@@ -87,6 +87,14 @@ export async function getEventIdBySlug(slug: string): Promise<string> {
   return event.id;
 }
 
+export async function countParticipants(eventId: string): Promise<number> {
+  const [{ value }] = await db
+    .select({ value: count() })
+    .from(scheduleParticipants)
+    .where(eq(scheduleParticipants.eventId, eventId));
+  return value;
+}
+
 export async function patchEvent(id: string, patch: { title?: string; description?: string }): Promise<void> {
   const result = await db.update(scheduleEvents).set(patch).where(eq(scheduleEvents.id, id)).returning({ id: scheduleEvents.id });
   if (result.length === 0) throw new DomainError('NOT_FOUND');

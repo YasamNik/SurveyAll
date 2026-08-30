@@ -18,9 +18,14 @@ export default async function Home() {
 
       <p className={`chip ${chipClass}`}>Status: {health.status}</p>
 
-      <Link href="/surveys" className="btn btn-primary">
-        Go to surveys
-      </Link>
+      <div className="flex gap-4">
+        <Link href="/surveys" className="btn btn-primary">
+          Go to surveys
+        </Link>
+        <Link href="/events" className="btn btn-primary">
+          Go to events
+        </Link>
+      </div>
     </main>
   );
 }
