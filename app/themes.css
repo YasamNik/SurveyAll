@@ -1,0 +1,59 @@
+/* Survey themes — public respond/done pages only. Applied via a `.theme-<id>`
+   wrapper class (see lib/themes.ts for the registry). Each theme overrides
+   `--stamp` (buttons, OMR fills, stars, focus rings all inherit it) and adds a
+   subtle, low-contrast full-page background pattern. Cards stay solid --card,
+   so pattern never touches form readability. Imported into globals.css at the
+   "components" layer — see app/globals.css. */
+
+.theme-classic {
+  /* Plain paper — no pattern, default --stamp from :root. */
+}
+
+.theme-food {
+  --stamp: #b23a2e;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='48' height='48'%3E%3Cg fill='none' stroke='%23B23A2E' stroke-opacity='0.14' stroke-width='1.5'%3E%3Ccircle cx='11' cy='11' r='6'/%3E%3Cpath d='M32 22v7m3-7v13m3-13v7m-3 6v7'/%3E%3C/g%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 48px 48px;
+}
+
+.theme-business {
+  --stamp: #2b3a55;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Cpath d='M6 0v24M18 0v24' stroke='%232B3A55' stroke-opacity='0.10' stroke-width='1'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 24px 24px;
+}
+
+.theme-leisure {
+  --stamp: #12746b;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='20'%3E%3Cpath d='M0 12q5-8 10 0t10 0 10 0 10 0' fill='none' stroke='%2312746B' stroke-opacity='0.14' stroke-width='1.5'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 40px 20px;
+}
+
+.theme-celebration {
+  --stamp: #7a2f6b;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Cg fill='%237A2F6B' fill-opacity='0.16'%3E%3Ccircle cx='6' cy='8' r='1.5'/%3E%3Ccircle cx='22' cy='4' r='1.2'/%3E%3Ccircle cx='34' cy='18' r='1.6'/%3E%3Ccircle cx='12' cy='28' r='1.3'/%3E%3Ccircle cx='28' cy='34' r='1.5'/%3E%3C/g%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 40px 40px;
+}
+
+.theme-education {
+  --stamp: #1f5c3c;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='24'%3E%3Cpath d='M0 12h40' stroke='%231F5C3C' stroke-opacity='0.12' stroke-width='1'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 40px 24px;
+}
+
+.theme-health {
+  --stamp: #0f6b5c;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='36' height='36'%3E%3Cpath d='M18 12v12M12 18h12' stroke='%230F6B5C' stroke-opacity='0.16' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 36px 36px;
+}
+
+.theme-tech {
+  --stamp: #5b3fa0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32'%3E%3Cpath d='M8 8h16M8 8v16' fill='none' stroke='%235B3FA0' stroke-opacity='0.14' stroke-width='1'/%3E%3Ccircle cx='8' cy='8' r='1.6' fill='%235B3FA0' fill-opacity='0.2'/%3E%3Ccircle cx='24' cy='8' r='1.6' fill='%235B3FA0' fill-opacity='0.2'/%3E%3Ccircle cx='8' cy='24' r='1.6' fill='%235B3FA0' fill-opacity='0.2'/%3E%3C/svg%3E");
+  background-repeat: repeat;
+  background-size: 32px 32px;
+}

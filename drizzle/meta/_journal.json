@@ -15,6 +15,13 @@
       "when": 1788044433719,
       "tag": "0001_worthless_norrin_radd",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1788101190066,
+      "tag": "0002_sloppy_mattie_franklin",
+      "breakpoints": true
     }
   ]
 }

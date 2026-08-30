@@ -8,6 +8,7 @@ import { assertValidRatingConfig } from '@/lib/domain/surveys/rating';
 import type { AnswerRow } from '@/lib/domain/surveys/respond';
 import { computeTally, type QuestionResult } from '@/lib/domain/surveys/tally';
 import type { QuestionInput, QuestionWithOptions, RatingConfig, StoredOption } from '@/lib/domain/surveys/types';
+import type { ThemeId } from '@/lib/themes';
 
 const UNIQUE_VIOLATION = '23505';
 
@@ -86,7 +87,7 @@ export async function getSurveyWithQuestions(
 
 export async function patchSurvey(
   id: string,
-  patch: { title?: string; description?: string; showResultsToRespondents?: boolean },
+  patch: { title?: string; description?: string; showResultsToRespondents?: boolean; theme?: ThemeId },
 ): Promise<void> {
   const result = await db
     .update(surveys)

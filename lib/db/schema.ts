@@ -17,6 +17,7 @@ export const surveys = pgTable('surveys', {
   status: text('status', { enum: ['draft', 'published', 'closed'] }).notNull().default('draft'),
   slug: text('slug').unique(),
   showResultsToRespondents: boolean('show_results_to_respondents').notNull().default(false),
+  theme: text('theme').notNull().default('classic'),
   publishedAt: timestamp('published_at', { withTimezone: true }),
   closedAt: timestamp('closed_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),

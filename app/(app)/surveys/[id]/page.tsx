@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { getSurveyWithQuestions } from '@/lib/db/queries/surveys';
 import { Star } from '@/app/components/stars';
+import { THEMES } from '@/lib/themes';
 import {
   addQuestionAction,
   closeSurveyAction,
@@ -92,6 +93,16 @@ export default async function SurveyEditorPage(props: PageProps<'/surveys/[id]'>
                 rows={2}
                 className="field-input"
               />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="field-label">Theme</span>
+              <select name="theme" defaultValue={survey.theme} className="field-input">
+                {THEMES.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.label}
+                  </option>
+                ))}
+              </select>
             </label>
             <button type="submit" className="btn btn-primary self-start">
               Save changes

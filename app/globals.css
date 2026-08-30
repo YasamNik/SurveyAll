@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./themes.css" layer(components);
 
 /* Paper Ballot design tokens — docs/superpowers/specs/2026-08-30-surveyall-visual-design.md */
 :root {

@@ -13,6 +13,7 @@ import {
 } from '@/lib/db/queries/surveys';
 import { DomainError } from '@/lib/domain/shared/errors';
 import type { OptionInput, QuestionInput, QuestionType } from '@/lib/domain/surveys/types';
+import { isThemeId } from '@/lib/themes';
 
 const TITLE_MAX = 200;
 const DESCRIPTION_MAX = 2000;
@@ -73,13 +74,15 @@ export async function createSurveyAction(formData: FormData): Promise<void> {
 export async function patchSurveyAction(surveyId: string, formData: FormData): Promise<void> {
   const title = String(formData.get('title') ?? '').trim();
   const description = String(formData.get('description') ?? '').trim();
+  const theme = String(formData.get('theme') ?? 'classic').trim();
   if (!title) toEditor(surveyId, { error: 'Title is required', section: 'details' });
   if (title.length > TITLE_MAX)
     toEditor(surveyId, { error: `Title is too long (max ${TITLE_MAX} characters)`, section: 'details' });
   if (description.length > DESCRIPTION_MAX)
     toEditor(surveyId, { error: `Description is too long (max ${DESCRIPTION_MAX} characters)`, section: 'details' });
+  if (!isThemeId(theme)) toEditor(surveyId, { error: 'Invalid theme', section: 'details' });
   try {
-    await patchSurvey(surveyId, { title, description });
+    await patchSurvey(surveyId, { title, description, theme });
   } catch (e) {
     if (e instanceof DomainError) toEditor(surveyId, { error: e.message, section: 'details' });
     throw e;

@@ -1,0 +1,1 @@
+ALTER TABLE "surveys" ADD COLUMN "theme" text DEFAULT 'classic' NOT NULL;

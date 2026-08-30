@@ -13,6 +13,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ slug: s
         status: survey.status,
         slug: survey.slug,
         showResultsToRespondents: survey.showResultsToRespondents,
+        theme: survey.theme,
       },
       questions,
     });
