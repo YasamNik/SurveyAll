@@ -8,107 +8,101 @@ memory of the last one — nothing survives except what is committed here.
 | File | Lifecycle | What it is for |
 |---|---|---|
 | `docs/STATUS.md` (this file) | **Rewritten** each session | Where the project stands, what is next, what is blocked |
-| `docs/DECISIONS.md` | **Append-only — never rewrite** | Every decision and the reasoning behind it. Reversing a decision means adding a new entry that supersedes the old one, not editing it |
-| `docs/superpowers/specs/YYYY-MM-DD-*.md` | Frozen once written | The design itself. A revised design is a new dated file, not an edit |
-
-Conversation transcripts, `.remember/`, and machine-local Claude memory do **not**
-travel between machines. If it is not committed, the next session cannot see it.
-`.remember/` is intentionally left untracked: it self-ignores, holds machine-local
-runtime state (PIDs, session UUIDs, logs), and its notes are a lossy duplicate of this
-file.
+| `docs/DECISIONS.md` | **Append-only — never rewrite** | Every decision and the reasoning behind it |
+| `docs/superpowers/specs/YYYY-MM-DD-*.md` | Frozen once written | The design. Current: `2026-08-29-surveyall-design.md` |
+| `docs/superpowers/plans/2026-08-29-open-demo-survey-vertical.md` | The active implementation plan | 11 tasks; execution state below |
 
 ### Conventions settled in practice
 
-- **Pushing:** direct to `main` is fine for this project (owner's call, 2026-08-27),
-  despite the branch + PR default described in `CLAUDE.md`. Still confirm before
-  pushing anything beyond documentation.
-- **End of session:** rewrite this file, append to `DECISIONS.md` if anything was
-  decided, commit, push.
+- **Pushing:** direct to `main` is fine (owner's call). This session the owner
+  additionally authorized full-autonomy code pushes.
+- **pnpm:** invoke as `corepack pnpm <cmd>` from the repo root (pinned `pnpm@9.15.0`
+  in package.json; corepack's default pnpm 11 needs Node ≥22, this box has Node 20).
+- **End of session:** rewrite this file, append DECISIONS if decided, commit, push.
 
 ---
 
-## Last updated: 2026-08-27 (design session, machine: asorkin / Windows)
+## Last updated: 2026-08-29 end of session (machine: alexander / Linux)
 
-**State as of commit `3a95d44`.** Run `git log 3a95d44..HEAD` to see anything that
-landed after this entry was written.
+**State as of commit `a8797ea`.** Run `git log a8797ea..HEAD` to see anything newer.
 
-### Where the project stands
+### THE DEMO IS LIVE
 
-Still zero application code. What changed this session is that the design now exists
-and is agreed: audience, product requirements, stack, data model, API surface, and
-the contents of the first build cycle.
+**https://dinner-comes-motorola-puerto.trycloudflare.com** — serving from this Linux
+machine: detached `next start` on :3000 (production build at commit `813f2df`),
+`surveyall-tunnel` Docker container (Cloudflare quick tunnel), `surveyall-db-1`
+Postgres container. Survives the Claude session; dies if the machine reboots or the
+tunnel container restarts (URL rotates — rerun `scripts/tunnel.sh`, re-share).
+Start/stop instructions further down in this file. **Auth is deliberately absent**
+(owner decision, DECISIONS 2026-08-29): everything is open, `author_id` is NULL.
 
-Tracked files: `README.md`, `LICENSE`, `.gitignore`, `CLAUDE.md`, and the three
-documents added this session.
+What the live URL serves right now: home/health page, `/surveys` authoring UI
+(create → edit questions → publish → results), full `/api/v1` authoring + public
+API. The public respond page `/s/<slug>` is committed (WIP) but **not yet in the
+running production build**.
 
-### What happened this session
+### Execution state of the plan (11 tasks, subagent-driven)
 
-A brainstorming session covering the whole product at a high level. Every decision
-reached, with its reasoning, is in `docs/DECISIONS.md`; the full design is in
-`docs/superpowers/specs/2026-08-27-surveyall-design.md`.
+Tasks 1–9 **complete, reviewed, green, pushed**: scaffold + ESLint domain boundary;
+Docker Postgres + Drizzle (+`"type":"module"`); health slice; tunnel scripts;
+survey schema (6 tables); survey domain logic (46 Vitest tests); authoring API;
+public respond/results API (rate-limited, ZodError→400); authoring UI.
 
-The short version:
+Task 10 (public respond page) **interrupted mid-verification** — session ended.
+Code committed as WIP (`a8797ea`): `app/s/[slug]/page.tsx`, `respond-form.tsx`,
+`done/page.tsx`. Typechecks; implementer had passed local checks up through
+404-path testing. **Still owed:** task review + fix loop, production rebuild +
+detached restart, through-tunnel verification (GET /s/<slug> 200, POST response
+201, results reflect it). The WIP commit is pushed.
 
-- **Audience:** public / broad distribution. Anonymous respondents at scale;
-  scheduling is the organiser's own tool.
-- **Stack:** Next.js App Router on Vercel, Supabase Postgres, Supabase Auth with
-  Google OAuth + email magic link.
-- **Shape:** one layered app. `lib/domain/**` is pure TypeScript; Server Components
-  and `/api/v1` route handlers are two thin adapters over it, with the boundary
-  enforced by an ESLint rule in CI. Not a monorepo.
-- **Security:** server-mediated access, RLS as a tested second wall.
-- **Identity:** anonymous respondents allowed; signing in earns participation
-  history, results access, and a real one-response-per-survey DB constraint.
-- **Two separate domains:** surveys, and a When2Meet-style painted availability grid
-  for scheduling. They are not one engine.
-- **Data model:** nine tables, specified in the design doc.
+Task 11 (GitHub Actions CI) **not started** — full workflow YAML is in the plan.
 
-### Verified this session
+Then: final whole-branch review (most capable model) per the SDD process, and the
+deferred-minors triage below.
 
-Nothing executable — this session produced documents only. No code was written, no
-dependency installed, no external service configured. Every "verified" line in the
-design doc describes a check to run during the foundation cycle, not one already run.
+### How to resume (next session, either machine)
 
-### What is unfinished
+1. Read this file, then the plan file. On THIS machine the SDD ledger survives at
+   `.superpowers/sdd/2026-08-29-open-demo-survey-vertical/progress.md` (git-ignored)
+   with per-task rulings; on the other machine it won't exist — this section is the
+   digest.
+2. Resume at Task 10's remaining steps (review → fix → prod rebuild/restart →
+   through-tunnel verify), then Task 11, then final review.
+3. **On the Windows machine: do NOT `pnpm install` or `docker compose up` until the
+   repo is moved out of OneDrive** (still pending, and the Postgres named-volume rule
+   in the design §7 applies). The demo can only serve from the Linux machine anyway.
 
-The design was approved but the **spec has not yet been reviewed by the owner**, and
-**no implementation plan exists**. Per the brainstorming workflow, the sequence from
-here is: owner reviews the spec → then the writing-plans skill produces an
-implementation plan → then implementation.
+### Rulings made this session (owner should skim; each is cheap to reverse)
 
-### Next step for whoever picks this up
+- Postgres-in-Docker/self-host decisions, auth deferral: in DECISIONS.md (read it).
+- ZodError → HTTP 400 in `lib/api/errors.ts` (client errors are not 500s).
+- Duplicate multi_choice option ids → 422 INVALID_ANSWER (was a public 500).
+- Rate-limiter trusts `CF-Connecting-IP`; spoofable only via direct LAN access —
+  accepted for the open demo (parked).
+- Results-visibility toggle stays usable after a survey closes (spec says results
+  remain readable post-close; plan's "closed = read-only" read down to editor fields).
+- Publish non-draft → SURVEY_CLOSED (409); publish with zero questions →
+  INVALID_ANSWER (422). Slug minting: 3 attempts on collision.
+- `tunnel.sh` uses a bounded 60s retry loop, not the plan's literal `sleep 5`.
 
-1. Read `docs/superpowers/specs/2026-08-27-surveyall-design.md` and confirm it still
-   reflects what you want, or note changes.
-2. Once it is confirmed, generate the implementation plan for the foundation cycle
-   (six deliverables, section 5 of the design doc).
-3. Only then scaffold.
+### Deferred minors (for the final review to triage)
 
-### Blockers and things to do before scaffolding
+Duplicated question Zod schema in two route files; list-page N+1 `countResponses`;
+results page double-loads survey; rate-limiter Map never fully evicts keys;
+`clientToken` length unbounded; zod `flatten()` deprecated; no `ipHashFrom` unit
+test; eslint config quote-style mix; tally rating-bucket inner loop O(range×n);
+TOCTOU on status guards (accepted for single container).
 
-- **Move the repo out of OneDrive.** The owner has acknowledged this and intends to
-  relocate it. OneDrive will sync `node_modules` and `.next` regardless of
-  `.gitignore` — tens of thousands of files, constant churn, file-lock failures
-  during install. Do this before `pnpm install` ever runs.
-- **External accounts not yet created:** no Supabase project, no Vercel project, no
-  Google OAuth client. All three are needed for foundation deliverables 2 and 5.
-- **Google OAuth on preview deploys** needs the stable Supabase callback URL rather
-  than per-PR Vercel hostnames. Details in the design doc, section 7.
+### Demo serving — start/stop (Linux machine)
 
-### Open questions
+- **Start:** `docker compose up -d db` → `scripts/serve.sh` (foreground; to detach:
+  `corepack pnpm build` then `setsid nohup corepack pnpm start > /tmp/surveyall-app.log 2>&1 &`)
+  → `scripts/tunnel.sh` (prints the public URL; rotates each run).
+- **Stop:** kill the `next start` process (`pkill -f "next start"`),
+  `docker rm -f surveyall-tunnel`, `docker compose down`.
 
-None blocking. Deferred product items are listed as non-goals in the design doc.
+### Blockers / needs owner
 
-## Demo serving (2026-08-29)
-
-The app runs via `scripts/serve.sh` (build + `next start` on :3000) and is exposed
-publicly via `scripts/tunnel.sh` (a Cloudflare quick tunnel, Docker container
-`surveyall-tunnel`). The tunnel URL changes on restart — re-run `scripts/tunnel.sh`
-after any restart of the `cloudflared` container and re-share the new URL.
-
-To stop the demo:
-- **App:** `kill "$(cat /tmp/claude-1000/-home-alexander-Documents-GitHub-SurveyAll/f4b60338-5773-49f7-9b7b-0b719f8ec9e3/scratchpad/surveyall-app.pid)"`
-  (that pidfile path is machine-local to the session that started it; if it's gone
-  or on another machine, fall back to `pkill -f "next start"`).
-- **Tunnel:** `docker rm -f surveyall-tunnel`.
-- **DB:** `docker compose down`.
+- Production deploy proper (home server, named tunnel/domain, prod SMTP, backups)
+  still needs the accounts/access listed in design §7 — untouched this session.
+- Scheduling domain: not started; next plan after this one finishes.

@@ -227,6 +227,18 @@ omitted. The full revised design is
 
 ---
 
+## 2026-08-29 — The package is an ES module (`"type": "module"`)
+
+Added during implementation because `scripts/migrate.ts` uses top-level `await`,
+which tsx cannot transpile under the implicit CommonJS default. Every future script
+and config in this repo loads as ESM.
+
+**Why:** minimal fix, verified against all ESM/CJS-sensitive files at the time
+(Next 16 configs were already `.mjs`; tsconfig already `module: esnext`). Recorded
+here because it is a project-wide module-system commitment, not a one-off.
+
+---
+
 ## 2026-08-29 — Auth deferred; open demo via quick tunnel now
 
 Owner's call: build and publicly deliver the survey vertical **without auth** —
