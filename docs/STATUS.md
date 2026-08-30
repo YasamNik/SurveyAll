@@ -22,11 +22,23 @@ memory of the last one — nothing survives except what is committed here.
 
 ---
 
-## Last updated: 2026-08-30 after respondent-name setting + Open button (machine: alexander / Linux)
+## Last updated: 2026-08-30 after the SCHEDULING vertical shipped (machine: alexander / Linux)
 
-**State as of commit `89cf119` plus a same-day fix-round commit (privacy-leak
-fix, message fix, test-data cleanup — see below); both on `origin/main`, CI
-green.**
+**State as of commit `7e42415` (= origin/main, CI pending-check at write time).
+Plan `2026-08-30-scheduling-vertical.md` COMPLETE (5 tasks, each reviewed with
+fix rounds).**
+
+### NEW: Calendar team-match is live
+
+Full When2Meet-style flow on the demo URL: create an event at `/events`
+(date range + daily window + auto-detected timezone — window immutable after
+creation), share `/e/<slug>`, participants join by name (cookie token identity,
+90d), paint availability by dragging on a 30-min grid (viewer-local timezone
+rendering), group heatmap (5-step indigo ramp) with tap-a-cell "who's free"
+popovers. Events are open|closed (no draft); heatmap stays readable after close.
+Demo event: `/e/tllahnv4`. 120 Vitest tests green (timezone/DST math included).
+Three scheduling decisions logged in DECISIONS.md (tz anchoring, no-draft,
+immutable window).
 
 ### Live demo — fully working
 

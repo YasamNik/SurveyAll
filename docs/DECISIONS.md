@@ -239,6 +239,29 @@ here because it is a project-wide module-system commitment, not a one-off.
 
 ---
 
+## 2026-08-30 — Scheduling: timezone anchoring, no draft state, immutable window
+
+Three decisions made while building the scheduling domain:
+
+1. **`author_timezone` anchors grid generation.** "Mar 3, 09:00" is 09:00 in the
+   author's zone, converted to UTC instants when the slot grid is computed. This
+   supersedes the 2026-08-27 design's sentence that the timezone "never affects
+   storage" — a naive date+time is unanchorable without a zone. Stored slots are
+   still pure UTC instants and are never re-interpreted.
+2. **Events have no draft/publish lifecycle.** Created → slug minted → `open`;
+   `closed` stops joins and paints while the heatmap stays readable. Surveys need
+   publish-freeze because answers reference frozen questions; an availability grid
+   has no such constraint, and When2Meet-style sharing is immediate.
+3. **The event window (dates, daily times, timezone) is immutable after creation.**
+   Participants paint against the generated grid; changing the window would orphan
+   or silently shift painted cells. Title/description stay editable.
+
+**Why overall:** keeps the grid math deterministic and the participant contract
+honest. Cost: authors must recreate an event to change its window — acceptable at
+this stage.
+
+---
+
 ## 2026-08-29 — Auth deferred; open demo via quick tunnel now
 
 Owner's call: build and publicly deliver the survey vertical **without auth** —
