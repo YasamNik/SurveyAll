@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import { STAMP_TINTS, dayKeyOf, dayLabelOf, heatmapBg, timeKeyOf } from './grid-locale';
 
 type HeatmapSlot = { slot: string; count: number; names: string[] };
 type Heatmap = { participantCount: number; slots: HeatmapSlot[] };
@@ -11,42 +12,6 @@ const FRIENDLY_ERROR: Record<string, string> = {
   SURVEY_CLOSED: 'This event closed while you were painting. Your changes were not saved.',
   NOT_FOUND: 'You are not joined to this event. Refresh the page and join again.',
 };
-
-const STAMP_TINTS = [0.15, 0.35, 0.6, 1.0];
-
-function partValue(parts: Intl.DateTimeFormatPart[], type: Intl.DateTimeFormatPartTypes): string {
-  return parts.find((p) => p.type === type)?.value ?? '';
-}
-
-function dayKeyOf(d: Date): string {
-  const parts = new Intl.DateTimeFormat('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(
-    d,
-  );
-  return `${partValue(parts, 'year')}-${partValue(parts, 'month')}-${partValue(parts, 'day')}`;
-}
-
-function dayLabelOf(d: Date): string {
-  const parts = new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric' }).formatToParts(
-    d,
-  );
-  return `${partValue(parts, 'weekday')} ${partValue(parts, 'month')} ${partValue(parts, 'day')}`;
-}
-
-function timeKeyOf(d: Date): string {
-  const parts = new Intl.DateTimeFormat('en-US', { hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(
-    d,
-  );
-  let hour = partValue(parts, 'hour');
-  if (hour === '24') hour = '00';
-  return `${hour}:${partValue(parts, 'minute')}`;
-}
-
-function heatmapBg(count: number, participantCount: number): string | undefined {
-  if (count <= 0 || participantCount <= 0) return undefined;
-  const ratio = count / participantCount;
-  const idx = ratio <= 0.25 ? 0 : ratio <= 0.5 ? 1 : ratio <= 0.75 ? 2 : 3;
-  return `rgba(61, 70, 178, ${STAMP_TINTS[idx]})`;
-}
 
 export function AvailabilityGrid({
   slots,
@@ -212,7 +177,7 @@ export function AvailabilityGrid({
 
       const body: { error?: string; message?: string } | null = await res.json().catch(() => null);
       const code = body?.error;
-      setSaveError(body?.message ?? (code && FRIENDLY_ERROR[code]) ?? 'Something went wrong. Try again.');
+      setSaveError((code && FRIENDLY_ERROR[code]) ?? body?.message ?? 'Something went wrong. Try again.');
       setSaveState('error');
     } catch {
       setSaveError('Network error. Try again.');

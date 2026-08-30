@@ -1,0 +1,82 @@
+import { describe, it, expect } from 'vitest';
+import { dayKeyOf, dayLabelOf, timeKeyOf, heatmapStep, heatmapBg, STAMP_TINTS } from './grid-locale';
+
+describe('dayKeyOf / dayLabelOf / timeKeyOf', () => {
+  it('buckets a known instant in a fixed zone (America/Toronto)', () => {
+    // 2026-03-03T14:00:00Z is 09:00 EST (Toronto is UTC-5 in March, before DST).
+    const d = new Date('2026-03-03T14:00:00.000Z');
+    expect(dayKeyOf(d, 'America/Toronto')).toBe('2026-03-03');
+    expect(dayLabelOf(d, 'America/Toronto')).toBe('Tue Mar 3');
+    expect(timeKeyOf(d, 'America/Toronto')).toBe('09:00');
+  });
+
+  it('buckets the same instant differently in a half-hour-offset zone (Asia/Kolkata, +5:30)', () => {
+    const d = new Date('2026-03-03T14:00:00.000Z');
+    expect(dayKeyOf(d, 'Asia/Kolkata')).toBe('2026-03-03');
+    expect(timeKeyOf(d, 'Asia/Kolkata')).toBe('19:30');
+  });
+
+  it('a half-hour-offset zone still lands on the 30-minute grid, not a fractional minute', () => {
+    // Two instants 30 minutes apart in UTC stay 30 minutes apart after a +5:30 shift.
+    const a = new Date('2026-03-03T14:00:00.000Z');
+    const b = new Date('2026-03-03T14:30:00.000Z');
+    expect(timeKeyOf(a, 'Asia/Kolkata')).toBe('19:30');
+    expect(timeKeyOf(b, 'Asia/Kolkata')).toBe('20:00');
+  });
+
+  it('a day boundary crossed by the zone shift lands in the correct day bucket', () => {
+    // 2026-03-03T19:00:00Z is 2026-03-04T00:30 in Kolkata (+5:30) — already the next day.
+    const d = new Date('2026-03-03T19:00:00.000Z');
+    expect(dayKeyOf(d, 'America/Toronto')).toBe('2026-03-03');
+    expect(dayKeyOf(d, 'Asia/Kolkata')).toBe('2026-03-04');
+    expect(timeKeyOf(d, 'Asia/Kolkata')).toBe('00:30');
+  });
+
+  it('day/time union across two days in one zone stays on distinct, sorted buckets', () => {
+    const day1 = new Date('2026-03-03T14:00:00.000Z');
+    const day1Later = new Date('2026-03-03T14:30:00.000Z');
+    const day2 = new Date('2026-03-04T14:00:00.000Z');
+
+    const keys = [day1, day1Later, day2].map((d) => `${dayKeyOf(d, 'America/Toronto')}|${timeKeyOf(d, 'America/Toronto')}`);
+    expect(new Set(keys).size).toBe(3);
+    expect(keys).toEqual(['2026-03-03|09:00', '2026-03-03|09:30', '2026-03-04|09:00']);
+  });
+
+  it('clamps local midnight to 00:00 (rather than a possible "24:00")', () => {
+    // 2026-03-03T05:00:00Z is exactly midnight in America/Toronto (UTC-5 in March).
+    const midnight = new Date('2026-03-03T05:00:00.000Z');
+    expect(timeKeyOf(midnight, 'America/Toronto')).toBe('00:00');
+  });
+
+  it('defaults to the runtime zone when no timeZone is given (component call shape)', () => {
+    const d = new Date('2026-03-03T14:00:00.000Z');
+    expect(dayKeyOf(d)).toBe(dayKeyOf(d, Intl.DateTimeFormat().resolvedOptions().timeZone));
+  });
+});
+
+describe('heatmapStep / heatmapBg', () => {
+  it('count 0 is not banded (paper, no fill)', () => {
+    expect(heatmapStep(0, 5)).toBeNull();
+    expect(heatmapBg(0, 5)).toBeUndefined();
+  });
+
+  it('participantCount 0 is not banded, regardless of count', () => {
+    expect(heatmapStep(0, 0)).toBeNull();
+  });
+
+  it('bands the four non-zero quartiles correctly', () => {
+    expect(heatmapStep(1, 4)).toBe(0); // 0.25 -> step 0
+    expect(heatmapStep(2, 4)).toBe(1); // 0.5 -> step 1
+    expect(heatmapStep(3, 4)).toBe(2); // 0.75 -> step 2
+    expect(heatmapStep(4, 4)).toBe(3); // 1.0 -> step 3
+  });
+
+  it('participantCount 1 with the sole participant painted is the full (last) step', () => {
+    expect(heatmapStep(1, 1)).toBe(3);
+    expect(heatmapBg(1, 1)).toBe(`rgba(61, 70, 178, ${STAMP_TINTS[3]})`);
+  });
+
+  it('heatmapBg renders the rgba string matching the banded tint', () => {
+    expect(heatmapBg(1, 4)).toBe(`rgba(61, 70, 178, ${STAMP_TINTS[0]})`);
+  });
+});

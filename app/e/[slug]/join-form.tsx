@@ -38,7 +38,7 @@ export function JoinForm({ slug }: { slug: string }) {
 
       const body: { error?: string; message?: string } | null = await res.json().catch(() => null);
       const code = body?.error;
-      setError(body?.message ?? (code && FRIENDLY_ERROR[code]) ?? 'Something went wrong. Try again.');
+      setError((code && FRIENDLY_ERROR[code]) ?? body?.message ?? 'Something went wrong. Try again.');
     } catch {
       setError('Network error. Try again.');
     } finally {
