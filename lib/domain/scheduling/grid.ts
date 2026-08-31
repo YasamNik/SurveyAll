@@ -17,37 +17,40 @@ const SLOT_STEP_MINUTES = 30;
 
 export function validateEventWindow(w: EventWindow): void {
   if (!DATE_RE.test(w.dateStart) || !isRealDate(w.dateStart)) {
-    throw new DomainError('INVALID_ANSWER', 'invalid dateStart');
+    throw new DomainError('INVALID_ANSWER', 'Enter dates as YYYY-MM-DD');
   }
   if (!DATE_RE.test(w.dateEnd) || !isRealDate(w.dateEnd)) {
-    throw new DomainError('INVALID_ANSWER', 'invalid dateEnd');
+    throw new DomainError('INVALID_ANSWER', 'Enter dates as YYYY-MM-DD');
   }
   if (!TIME_RE.test(w.dayStartTime)) {
-    throw new DomainError('INVALID_ANSWER', 'invalid dayStartTime');
+    throw new DomainError('INVALID_ANSWER', 'Enter times as HH:MM');
   }
   if (!TIME_RE.test(w.dayEndTime)) {
-    throw new DomainError('INVALID_ANSWER', 'invalid dayEndTime');
+    throw new DomainError('INVALID_ANSWER', 'Enter times as HH:MM');
   }
 
   const startMs = parseDateUtc(w.dateStart);
   const endMs = parseDateUtc(w.dateEnd);
   if (endMs < startMs) {
-    throw new DomainError('INVALID_ANSWER', 'dateEnd must not be before dateStart');
+    throw new DomainError('INVALID_ANSWER', 'End date must not be before the start date');
   }
   const spanDays = (endMs - startMs) / MS_PER_DAY + 1;
   if (spanDays > 31) {
-    throw new DomainError('INVALID_ANSWER', 'event window must span at most 31 days');
+    throw new DomainError('INVALID_ANSWER', 'Event can span at most 31 days');
   }
 
   if (w.dayEndTime <= w.dayStartTime) {
-    throw new DomainError('INVALID_ANSWER', 'dayEndTime must be after dayStartTime');
+    throw new DomainError('INVALID_ANSWER', 'Daily end time must be after the daily start time');
   }
 
   // Validates the time zone as a side effect (throws INVALID_ANSWER 'unknown time zone').
   zonedTimeToUtc(w.dateStart, w.dayStartTime, w.authorTimezone);
 
   if (effectiveDates(w).length === 0) {
-    throw new DomainError('INVALID_ANSWER', 'window contains only weekend days');
+    throw new DomainError(
+      'INVALID_ANSWER',
+      'This date range has only weekend days — uncheck Skip weekends or widen the range',
+    );
   }
 }
 

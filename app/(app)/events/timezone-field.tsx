@@ -38,10 +38,13 @@ function supportedTimezones(): string[] {
 // Detects the browser's time zone and submits it via a hidden input.
 // "Change" swaps to an editable <select> (or text input, if the environment
 // lacks Intl.supportedValuesOf) with the same field name, so the form only
-// ever has one authorTimezone value.
-export function TimezoneField({ name = 'authorTimezone' }: { name?: string }) {
+// ever has one authorTimezone value. `defaultValue` (e.g. a zone re-submitted
+// after a failed form action) starts the field open in the changed state when
+// it differs from the auto-detected zone, so a prior manual choice survives.
+export function TimezoneField({ name = 'authorTimezone', defaultValue }: { name?: string; defaultValue?: string }) {
   const detected = useSyncExternalStore(subscribe, detectTimezone, getServerSnapshot);
-  const [changing, setChanging] = useState(false);
+  const initial = defaultValue || detected;
+  const [changing, setChanging] = useState(Boolean(defaultValue) && defaultValue !== detected);
 
   const zones = supportedTimezones();
 
@@ -50,7 +53,7 @@ export function TimezoneField({ name = 'authorTimezone' }: { name?: string }) {
       <span className="field-label">Time zone</span>
       {changing ? (
         zones.length > 0 ? (
-          <select name={name} defaultValue={detected} required className="field-input">
+          <select name={name} defaultValue={initial} required className="field-input">
             {zones.map((z) => (
               <option key={z} value={z}>
                 {z}
@@ -58,7 +61,7 @@ export function TimezoneField({ name = 'authorTimezone' }: { name?: string }) {
             ))}
           </select>
         ) : (
-          <input type="text" name={name} defaultValue={detected} required className="field-input" />
+          <input type="text" name={name} defaultValue={initial} required className="field-input" />
         )
       ) : (
         <div className="flex items-center gap-3">

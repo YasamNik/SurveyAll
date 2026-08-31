@@ -16,7 +16,26 @@ function toEditor(eventId: string, opts?: { error?: string; section?: string }):
   redirect(`/events/${eventId}${suffix ? `?${suffix}` : ''}`);
 }
 
-export async function createEventAction(formData: FormData): Promise<void> {
+export type CreateEventFormValues = {
+  title: string;
+  description: string;
+  authorTimezone: string;
+  dateStart: string;
+  dateEnd: string;
+  dayStartTime: string;
+  dayEndTime: string;
+  skipWeekends: boolean;
+};
+
+export type CreateEventState = {
+  error: string | null;
+  values: CreateEventFormValues;
+};
+
+export async function createEventAction(
+  _prevState: CreateEventState,
+  formData: FormData,
+): Promise<CreateEventState> {
   const title = String(formData.get('title') ?? '').trim();
   const description = String(formData.get('description') ?? '').trim();
   const authorTimezone = String(formData.get('authorTimezone') ?? '').trim();
@@ -29,12 +48,22 @@ export async function createEventAction(formData: FormData): Promise<void> {
   // the author unchecks it.
   const skipWeekends = formData.get('skipWeekends') === 'on';
 
-  if (!title) redirect(`/events?error=${encodeURIComponent('Title is required')}`);
-  if (title.length > TITLE_MAX)
-    redirect(`/events?error=${encodeURIComponent(`Title is too long (max ${TITLE_MAX} characters)`)}`);
+  const values: CreateEventFormValues = {
+    title,
+    description,
+    authorTimezone,
+    dateStart,
+    dateEnd,
+    dayStartTime,
+    dayEndTime,
+    skipWeekends,
+  };
+
+  if (!title) return { error: 'Title is required', values };
+  if (title.length > TITLE_MAX) return { error: `Title is too long (max ${TITLE_MAX} characters)`, values };
   if (description.length > DESCRIPTION_MAX)
-    redirect(`/events?error=${encodeURIComponent(`Description is too long (max ${DESCRIPTION_MAX} characters)`)}`);
-  if (!authorTimezone) redirect(`/events?error=${encodeURIComponent('Time zone is required')}`);
+    return { error: `Description is too long (max ${DESCRIPTION_MAX} characters)`, values };
+  if (!authorTimezone) return { error: 'Time zone is required', values };
 
   let created: { id: string; slug: string };
   try {
@@ -49,7 +78,7 @@ export async function createEventAction(formData: FormData): Promise<void> {
       skipWeekends,
     });
   } catch (e) {
-    if (e instanceof DomainError) redirect(`/events?error=${encodeURIComponent(e.message)}`);
+    if (e instanceof DomainError) return { error: e.message, values };
     throw e;
   }
   redirect(`/events/${created.id}`);

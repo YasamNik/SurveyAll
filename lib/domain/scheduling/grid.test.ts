@@ -2,13 +2,16 @@ import { describe, it, expect } from 'vitest';
 import { generateSlots, validateEventWindow, type EventWindow } from './grid';
 import { DomainError } from '../shared/errors';
 
-function expectInvalidAnswer(fn: () => void) {
+function expectInvalidAnswer(fn: () => void, message?: string) {
   expect(fn).toThrow(DomainError);
   try {
     fn();
     expect.unreachable();
   } catch (e) {
     expect((e as DomainError).code).toBe('INVALID_ANSWER');
+    if (message !== undefined) {
+      expect((e as DomainError).message).toBe(message);
+    }
   }
 }
 
@@ -137,39 +140,57 @@ describe('validateEventWindow', () => {
   });
 
   it('rejects a malformed dateStart', () => {
-    expectInvalidAnswer(() => validateEventWindow({ ...base, dateStart: '2026/06/01' }));
+    expectInvalidAnswer(
+      () => validateEventWindow({ ...base, dateStart: '2026/06/01' }),
+      'Enter dates as YYYY-MM-DD',
+    );
   });
 
   it('rejects a malformed dateEnd', () => {
-    expectInvalidAnswer(() => validateEventWindow({ ...base, dateEnd: 'June 1' }));
+    expectInvalidAnswer(() => validateEventWindow({ ...base, dateEnd: 'June 1' }), 'Enter dates as YYYY-MM-DD');
   });
 
   it('rejects a malformed dayStartTime', () => {
-    expectInvalidAnswer(() => validateEventWindow({ ...base, dayStartTime: '9:00' }));
+    expectInvalidAnswer(() => validateEventWindow({ ...base, dayStartTime: '9:00' }), 'Enter times as HH:MM');
   });
 
   it('rejects a malformed dayEndTime', () => {
-    expectInvalidAnswer(() => validateEventWindow({ ...base, dayEndTime: '18:00:00' }));
+    expectInvalidAnswer(() => validateEventWindow({ ...base, dayEndTime: '18:00:00' }), 'Enter times as HH:MM');
   });
 
   it('rejects a calendar date that does not exist', () => {
-    expectInvalidAnswer(() => validateEventWindow({ ...base, dateStart: '2026-02-30', dateEnd: '2026-02-30' }));
+    expectInvalidAnswer(
+      () => validateEventWindow({ ...base, dateStart: '2026-02-30', dateEnd: '2026-02-30' }),
+      'Enter dates as YYYY-MM-DD',
+    );
   });
 
   it('rejects dateEnd before dateStart', () => {
-    expectInvalidAnswer(() => validateEventWindow({ ...base, dateStart: '2026-06-05', dateEnd: '2026-06-01' }));
+    expectInvalidAnswer(
+      () => validateEventWindow({ ...base, dateStart: '2026-06-05', dateEnd: '2026-06-01' }),
+      'End date must not be before the start date',
+    );
   });
 
   it('rejects a span greater than 31 days', () => {
-    expectInvalidAnswer(() => validateEventWindow({ ...base, dateStart: '2026-01-01', dateEnd: '2026-02-05' }));
+    expectInvalidAnswer(
+      () => validateEventWindow({ ...base, dateStart: '2026-01-01', dateEnd: '2026-02-05' }),
+      'Event can span at most 31 days',
+    );
   });
 
   it('rejects dayEndTime equal to dayStartTime', () => {
-    expectInvalidAnswer(() => validateEventWindow({ ...base, dayStartTime: '09:00', dayEndTime: '09:00' }));
+    expectInvalidAnswer(
+      () => validateEventWindow({ ...base, dayStartTime: '09:00', dayEndTime: '09:00' }),
+      'Daily end time must be after the daily start time',
+    );
   });
 
   it('rejects dayEndTime before dayStartTime', () => {
-    expectInvalidAnswer(() => validateEventWindow({ ...base, dayStartTime: '18:00', dayEndTime: '09:00' }));
+    expectInvalidAnswer(
+      () => validateEventWindow({ ...base, dayStartTime: '18:00', dayEndTime: '09:00' }),
+      'Daily end time must be after the daily start time',
+    );
   });
 
   it('rejects an unknown time zone', () => {
@@ -178,8 +199,9 @@ describe('validateEventWindow', () => {
 
   it('rejects a Saturday-Sunday-only window when skipWeekends is true', () => {
     // 2026-06-06 (Sat) .. 2026-06-07 (Sun): weekend only.
-    expectInvalidAnswer(() =>
-      validateEventWindow({ ...base, dateStart: '2026-06-06', dateEnd: '2026-06-07', skipWeekends: true }),
+    expectInvalidAnswer(
+      () => validateEventWindow({ ...base, dateStart: '2026-06-06', dateEnd: '2026-06-07', skipWeekends: true }),
+      'This date range has only weekend days — uncheck Skip weekends or widen the range',
     );
   });
 
