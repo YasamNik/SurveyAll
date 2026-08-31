@@ -28,6 +28,19 @@ memory of the last one — nothing survives except what is committed here.
 Plan `2026-08-30-scheduling-vertical.md` COMPLETE (5 tasks, each reviewed with
 fix rounds).**
 
+### Post-ship tuning (owner-driven, all deployed + CI green)
+
+- Heatmap is a GREEN consensus ramp (deep green = everyone available); own
+  painting stays indigo. Legend updated.
+- Mobile grid: sticky day header + time column, sticky Save bar, segmented
+  Paint/Heatmap toggle, ≥44px cells.
+- Touch gestures: swipe scrolls, tap toggles, long-press-then-drag paints
+  (350ms/8px slop; non-passive touchmove guard). Desktop drag unchanged.
+- Events can skip weekends: `skip_weekends` column (migration 0005, DB default
+  false to preserve existing grids; API/UI default TRUE for new events).
+  Sat/Sun-only windows are rejected.
+- 132 Vitest tests green.
+
 ### NEW: Calendar team-match is live
 
 Full When2Meet-style flow on the demo URL: create an event at `/events`
