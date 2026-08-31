@@ -7,6 +7,7 @@ export interface EventWindow {
   dayStartTime: string;
   dayEndTime: string;
   authorTimezone: string;
+  skipWeekends: boolean;
 }
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -44,19 +45,35 @@ export function validateEventWindow(w: EventWindow): void {
 
   // Validates the time zone as a side effect (throws INVALID_ANSWER 'unknown time zone').
   zonedTimeToUtc(w.dateStart, w.dayStartTime, w.authorTimezone);
+
+  if (effectiveDates(w).length === 0) {
+    throw new DomainError('INVALID_ANSWER', 'window contains only weekend days');
+  }
 }
 
 export function generateSlots(w: EventWindow): string[] {
   validateEventWindow(w);
 
   const slots: string[] = [];
-  for (const date of enumerateDates(w.dateStart, w.dateEnd)) {
+  for (const date of effectiveDates(w)) {
     for (const time of dayTimeSteps(w.dayStartTime, w.dayEndTime)) {
       slots.push(zonedTimeToUtc(date, time, w.authorTimezone).toISOString());
     }
   }
 
   return Array.from(new Set(slots)).sort();
+}
+
+// Day-of-week check on the calendar date string itself (pure UTC math), not on the
+// zoned instant the slot resolves to — the author's calendar date defines the weekend.
+function isWeekend(date: string): boolean {
+  const day = new Date(parseDateUtc(date)).getUTCDay();
+  return day === 0 || day === 6;
+}
+
+function effectiveDates(w: Pick<EventWindow, 'dateStart' | 'dateEnd' | 'skipWeekends'>): string[] {
+  const dates = enumerateDates(w.dateStart, w.dateEnd);
+  return w.skipWeekends ? dates.filter((date) => !isWeekend(date)) : dates;
 }
 
 function isRealDate(date: string): boolean {

@@ -20,6 +20,7 @@ describe('generateSlots', () => {
       dayStartTime: '09:00',
       dayEndTime: '18:00',
       authorTimezone: 'UTC',
+      skipWeekends: false,
     };
     const slots = generateSlots(w);
     expect(slots).toHaveLength(18);
@@ -34,6 +35,7 @@ describe('generateSlots', () => {
       dayStartTime: '09:00',
       dayEndTime: '12:00',
       authorTimezone: 'UTC',
+      skipWeekends: false,
     };
     const slots = generateSlots(w);
     // 3 hours/day = 6 slots/day, 2 days = 12 slots
@@ -51,6 +53,7 @@ describe('generateSlots', () => {
       dayStartTime: '09:00',
       dayEndTime: '10:00',
       authorTimezone: 'UTC',
+      skipWeekends: false,
     };
     const slots = generateSlots(w);
     const sorted = [...slots].sort();
@@ -68,6 +71,7 @@ describe('generateSlots', () => {
       dayStartTime: '01:00',
       dayEndTime: '04:00',
       authorTimezone: 'America/Toronto',
+      skipWeekends: false,
     };
     const slots = generateSlots(w);
     expect(slots).toEqual([
@@ -76,6 +80,41 @@ describe('generateSlots', () => {
       '2026-03-08T07:00:00.000Z',
       '2026-03-08T07:30:00.000Z',
     ]);
+  });
+
+  it('excludes Saturday and Sunday calendar dates when skipWeekends is true', () => {
+    // 2026-06-01 (Mon) .. 2026-06-07 (Sun): a full week.
+    const w: EventWindow = {
+      dateStart: '2026-06-01',
+      dateEnd: '2026-06-07',
+      dayStartTime: '09:00',
+      dayEndTime: '10:00',
+      authorTimezone: 'UTC',
+      skipWeekends: true,
+    };
+    const slots = generateSlots(w);
+    // 1 hour/day = 2 slots/day, 5 weekdays = 10 slots
+    expect(slots).toHaveLength(10);
+    expect(slots.every((iso) => {
+      const day = new Date(iso).getUTCDay();
+      return day !== 0 && day !== 6;
+    })).toBe(true);
+    expect(slots[0]).toBe('2026-06-01T09:00:00.000Z');
+    expect(slots[slots.length - 1]).toBe('2026-06-05T09:30:00.000Z');
+  });
+
+  it('skipWeekends false includes Saturday and Sunday (unchanged behavior)', () => {
+    const w: EventWindow = {
+      dateStart: '2026-06-01',
+      dateEnd: '2026-06-07',
+      dayStartTime: '09:00',
+      dayEndTime: '10:00',
+      authorTimezone: 'UTC',
+      skipWeekends: false,
+    };
+    const slots = generateSlots(w);
+    // 1 hour/day = 2 slots/day, 7 days = 14 slots
+    expect(slots).toHaveLength(14);
   });
 });
 
@@ -86,6 +125,7 @@ describe('validateEventWindow', () => {
     dayStartTime: '09:00',
     dayEndTime: '18:00',
     authorTimezone: 'UTC',
+    skipWeekends: false,
   };
 
   it('accepts a valid window', () => {
@@ -134,5 +174,18 @@ describe('validateEventWindow', () => {
 
   it('rejects an unknown time zone', () => {
     expectInvalidAnswer(() => validateEventWindow({ ...base, authorTimezone: 'Not/AZone' }));
+  });
+
+  it('rejects a Saturday-Sunday-only window when skipWeekends is true', () => {
+    // 2026-06-06 (Sat) .. 2026-06-07 (Sun): weekend only.
+    expectInvalidAnswer(() =>
+      validateEventWindow({ ...base, dateStart: '2026-06-06', dateEnd: '2026-06-07', skipWeekends: true }),
+    );
+  });
+
+  it('accepts a Saturday-Sunday-only window when skipWeekends is false', () => {
+    expect(() =>
+      validateEventWindow({ ...base, dateStart: '2026-06-06', dateEnd: '2026-06-07', skipWeekends: false }),
+    ).not.toThrow();
   });
 });

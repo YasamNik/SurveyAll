@@ -24,6 +24,10 @@ export async function createEventAction(formData: FormData): Promise<void> {
   const dateEnd = String(formData.get('dateEnd') ?? '').trim();
   const dayStartTime = String(formData.get('dayStartTime') ?? '').trim();
   const dayEndTime = String(formData.get('dayEndTime') ?? '').trim();
+  // Unchecked checkboxes are absent from FormData, so absent = false. The checkbox
+  // being checked by default in the form gives new events skipWeekends: true unless
+  // the author unchecks it.
+  const skipWeekends = formData.get('skipWeekends') === 'on';
 
   if (!title) redirect(`/events?error=${encodeURIComponent('Title is required')}`);
   if (title.length > TITLE_MAX)
@@ -42,6 +46,7 @@ export async function createEventAction(formData: FormData): Promise<void> {
       dateEnd,
       dayStartTime,
       dayEndTime,
+      skipWeekends,
     });
   } catch (e) {
     if (e instanceof DomainError) redirect(`/events?error=${encodeURIComponent(e.message)}`);

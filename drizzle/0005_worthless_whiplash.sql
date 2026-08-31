@@ -1,0 +1,1 @@
+ALTER TABLE "schedule_events" ADD COLUMN "skip_weekends" boolean DEFAULT false NOT NULL;

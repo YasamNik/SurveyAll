@@ -56,6 +56,14 @@ export default async function EventsPage(props: PageProps<'/events'>) {
 
         <TimezoneField />
 
+        <label className="flex flex-col gap-1">
+          <span className="flex items-center gap-2 text-sm">
+            <input type="checkbox" name="skipWeekends" defaultChecked className="h-4 w-4" />
+            <span>Skip weekends</span>
+          </span>
+          <span className="text-pencil text-sm">Saturdays and Sundays are left out of the grid</span>
+        </label>
+
         {error && (
           <p role="alert" className="error-strip">
             {error}

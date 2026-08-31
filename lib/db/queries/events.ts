@@ -21,6 +21,7 @@ function windowOf(event: typeof scheduleEvents.$inferSelect): EventWindow {
     dayStartTime: event.dayStartTime,
     dayEndTime: event.dayEndTime,
     authorTimezone: event.authorTimezone,
+    skipWeekends: event.skipWeekends,
   };
 }
 
@@ -38,6 +39,7 @@ export async function createEvent(input: {
   dateEnd: string;
   dayStartTime: string;
   dayEndTime: string;
+  skipWeekends: boolean;
 }): Promise<{ id: string; slug: string }> {
   validateEventWindow({
     dateStart: input.dateStart,
@@ -45,6 +47,7 @@ export async function createEvent(input: {
     dayStartTime: input.dayStartTime,
     dayEndTime: input.dayEndTime,
     authorTimezone: input.authorTimezone,
+    skipWeekends: input.skipWeekends,
   });
 
   const maxAttempts = 3;
@@ -62,6 +65,7 @@ export async function createEvent(input: {
           dateEnd: input.dateEnd,
           dayStartTime: input.dayStartTime,
           dayEndTime: input.dayEndTime,
+          skipWeekends: input.skipWeekends,
         })
         .returning({ id: scheduleEvents.id, slug: scheduleEvents.slug });
       return row;
@@ -127,6 +131,7 @@ export async function getPublicEventBySlug(slug: string): Promise<{
     dateEnd: string;
     dayStartTime: string;
     dayEndTime: string;
+    skipWeekends: boolean;
   };
   slots: string[];
 }> {
@@ -144,6 +149,7 @@ export async function getPublicEventBySlug(slug: string): Promise<{
       dateEnd: event.dateEnd,
       dayStartTime: event.dayStartTime,
       dayEndTime: event.dayEndTime,
+      skipWeekends: event.skipWeekends,
     },
     slots,
   };

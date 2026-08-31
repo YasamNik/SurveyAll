@@ -76,6 +76,7 @@ export const scheduleEvents = pgTable('schedule_events', {
   dateEnd: text('date_end').notNull(),
   dayStartTime: text('day_start_time').notNull(),
   dayEndTime: text('day_end_time').notNull(),
+  skipWeekends: boolean('skip_weekends').notNull().default(false),
   status: text('status', { enum: ['open', 'closed'] }).notNull().default('open'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   closedAt: timestamp('closed_at', { withTimezone: true }),

@@ -11,6 +11,7 @@ const createSchema = z.object({
   dateEnd: z.string().max(10),
   dayStartTime: z.string().max(5),
   dayEndTime: z.string().max(5),
+  skipWeekends: z.boolean().default(true),
 });
 
 export async function GET() {

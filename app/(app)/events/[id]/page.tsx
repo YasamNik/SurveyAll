@@ -85,6 +85,9 @@ export default async function EventEditorPage(props: PageProps<'/events/[id]'>) 
           <p>
             <span className="font-medium">Time zone:</span> {event.authorTimezone}
           </p>
+          <p>
+            <span className="font-medium">Weekends:</span> {event.skipWeekends ? 'skipped' : 'included'}
+          </p>
         </div>
       </section>
 
