@@ -8,6 +8,7 @@ import {
   HEATMAP_GREENS,
   exceedsTouchSlop,
   TOUCH_SLOP_PX,
+  decideSaveAction,
 } from './grid-locale';
 
 describe('dayKeyOf / dayLabelOf / timeKeyOf', () => {
@@ -131,5 +132,20 @@ describe('exceedsTouchSlop', () => {
   it('respects a custom slop', () => {
     expect(exceedsTouchSlop(15, 0, 20)).toBe(false);
     expect(exceedsTouchSlop(25, 0, 20)).toBe(true);
+  });
+});
+
+describe('decideSaveAction', () => {
+  it('skips when there is nothing dirty, regardless of whether a save is in flight', () => {
+    expect(decideSaveAction({ dirty: false, saving: false })).toBe('skip');
+    expect(decideSaveAction({ dirty: false, saving: true })).toBe('skip');
+  });
+
+  it('saves now when dirty and no save is in flight', () => {
+    expect(decideSaveAction({ dirty: true, saving: false })).toBe('save');
+  });
+
+  it('queues a trailing save when dirty and a save is already in flight', () => {
+    expect(decideSaveAction({ dirty: true, saving: true })).toBe('queue');
   });
 });

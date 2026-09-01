@@ -93,3 +93,23 @@ export const TOUCH_SLOP_PX = 8;
 export function exceedsTouchSlop(dx: number, dy: number, slop: number = TOUCH_SLOP_PX): boolean {
   return Math.hypot(dx, dy) > slop;
 }
+
+// Realtime autosave (paint mode): a change schedules a save this many ms
+// after the LAST change (rapid strokes/taps batch into one write). A failed
+// save gets exactly one silent retry after RETRY_DELAY_MS before the UI
+// surfaces a "not saved" state.
+export const SAVE_DEBOUNCE_MS = 800;
+export const RETRY_DELAY_MS = 2000;
+
+export type SaveAction = 'skip' | 'save' | 'queue';
+
+/**
+ * What a debounce firing should do: nothing if there's nothing dirty to save;
+ * start a save now if the coast is clear; or, if a save is already in flight,
+ * queue exactly one trailing save (to run once that save finishes) rather than
+ * firing a second, overlapping request.
+ */
+export function decideSaveAction({ dirty, saving }: { dirty: boolean; saving: boolean }): SaveAction {
+  if (!dirty) return 'skip';
+  return saving ? 'queue' : 'save';
+}

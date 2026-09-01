@@ -577,7 +577,7 @@ body {
     }
   }
 
-  /* ---- Sticky save bar (mobile, paint mode) ---- */
+  /* ---- Sticky save-status bar (mobile, paint mode) ---- */
 
   @media (max-width: 640px) {
     .avail-actions {

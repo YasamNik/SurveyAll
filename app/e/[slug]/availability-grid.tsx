@@ -5,6 +5,9 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   HEATMAP_GREENS,
   LONG_PRESS_MS,
+  RETRY_DELAY_MS,
+  SAVE_DEBOUNCE_MS,
+  decideSaveAction,
   dayKeyOf,
   dayLabelOf,
   dayLabelShortOf,
@@ -15,12 +18,6 @@ import {
 
 type HeatmapSlot = { slot: string; count: number; names: string[] };
 type Heatmap = { participantCount: number; slots: HeatmapSlot[] };
-
-const FRIENDLY_ERROR: Record<string, string> = {
-  RATE_LIMITED: 'Too many attempts from this connection. Try again in a minute.',
-  SURVEY_CLOSED: 'This event closed while you were painting. Your changes were not saved.',
-  NOT_FOUND: 'You are not joined to this event. Refresh the page and join again.',
-};
 
 export function AvailabilityGrid({
   slots,
@@ -53,7 +50,6 @@ export function AvailabilityGrid({
   const [painted, setPainted] = useState<Set<string>>(() => new Set(mySlots));
   const [savedSlots, setSavedSlots] = useState<Set<string>>(() => new Set(mySlots));
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const [saveError, setSaveError] = useState<string | null>(null);
 
   const [popover, setPopover] = useState<{ iso: string; top: number; left: number } | null>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -73,6 +69,30 @@ export function AvailabilityGrid({
     startY: number;
     timer: ReturnType<typeof setTimeout>;
   } | null>(null);
+
+  // Realtime autosave (paint mode): `savingRef` is true for the whole span of
+  // a save attempt, including its one silent retry — a debounce firing during
+  // that window queues a trailing save (`pendingRef`) instead of overlapping
+  // it. `paintedRef`/`savedSlotsRef` mirror the latest state for the exit-flush
+  // handler and the post-save trailing check, both of which run outside the
+  // normal render cycle and would otherwise see a stale closure.
+  const savingRef = useRef(false);
+  const pendingRef = useRef(false);
+  const paintedRef = useRef(painted);
+  const savedSlotsRef = useRef(savedSlots);
+  useEffect(() => {
+    paintedRef.current = painted;
+  }, [painted]);
+  useEffect(() => {
+    savedSlotsRef.current = savedSlots;
+  }, [savedSlots]);
+
+  // `doSave` (defined below) is a plain function re-created every render, so
+  // calling it from the debounce effect's timeout would otherwise force that
+  // effect to list it as a dependency — re-running (and so resetting the
+  // debounce) on every render. Routing through this ref keeps the effect's
+  // deps to just the state it actually needs to react to.
+  const doSaveRef = useRef<(targetSlots: Set<string>, isRetry?: boolean) => void>(() => {});
 
   const { days, times, cellByKey } = useMemo(() => {
     const dayMap = new Map<string, { dayLabel: string; dayLabelShort: string }>();
@@ -104,6 +124,56 @@ export function AvailabilityGrid({
     return false;
   }, [painted, savedSlots]);
 
+  // Realtime autosave: (re)schedule a save SAVE_DEBOUNCE_MS after every
+  // change to `painted` — depending on `painted`'s identity (not just the
+  // `dirty` boolean) means each individual paint during a stroke resets the
+  // window, so a rapid multi-cell drag or a burst of taps batches into one
+  // write. Also depends on `dirty` directly so an external resolution (e.g.
+  // the in-flight save from an earlier stroke completing and catching
+  // `savedSlots` up to `painted`) cancels a now-pointless pending timer.
+  // Calls through `doSaveRef` (kept pointed at the latest `doSave` by the
+  // effect just below) rather than closing over `doSave` directly, so this
+  // effect doesn't need to re-run — and so reschedule the debounce — on every
+  // render just because `doSave`'s identity is fresh each time.
+  useEffect(() => {
+    if (!canPaint || !dirty) return undefined;
+    const timer = setTimeout(() => {
+      const action = decideSaveAction({ dirty, saving: savingRef.current });
+      if (action === 'save') doSaveRef.current(new Set(painted));
+      else if (action === 'queue') pendingRef.current = true;
+    }, SAVE_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [painted, dirty, canPaint]);
+
+  // Flush on exit: if the tab is hidden or unloading with unsaved painting,
+  // fire an immediate best-effort PUT so the last stroke isn't lost. Reads
+  // from the ref mirrors (not `painted`/`savedSlots` directly) since this
+  // listener is attached once and would otherwise close over stale state.
+  useEffect(() => {
+    if (!canPaint) return undefined;
+    function flush() {
+      const current = paintedRef.current;
+      const saved = savedSlotsRef.current;
+      const isDirty = current.size !== saved.size || Array.from(current).some((iso) => !saved.has(iso));
+      if (!isDirty) return;
+      fetch(`/api/v1/public/events/${slug}/availability`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slots: Array.from(current) }),
+        keepalive: true,
+      }).catch(() => {});
+    }
+    function onVisibilityChange() {
+      if (document.visibilityState === 'hidden') flush();
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    window.addEventListener('pagehide', flush);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('pagehide', flush);
+    };
+  }, [canPaint, slug]);
+
   useEffect(() => {
     if (!popover) return;
     function onPointerDown(e: PointerEvent) {
@@ -129,6 +199,12 @@ export function AvailabilityGrid({
   }
 
   function applyPaint(iso: string, paintMode: 'add' | 'erase') {
+    // Optimistic status flip, tied directly to the user action rather than a
+    // reactive effect — the debounce effect below (driven by the accurately
+    // computed `dirty`) remains the actual source of truth for scheduling a
+    // save; this just gives immediate "Saving…" feedback the moment painting
+    // starts, rather than waiting out the debounce window in silence.
+    setSaveState('saving');
     setPainted((prev) => {
       const has = prev.has(iso);
       if (paintMode === 'add' && has) return prev;
@@ -278,32 +354,63 @@ export function AvailabilityGrid({
     setPopover({ iso, top: cellEl.offsetTop + cellEl.offsetHeight + 6, left: cellEl.offsetLeft });
   }
 
-  async function handleSave() {
+  // Runs a trailing save (the latest painted set) if one was queued while the
+  // just-finished attempt was in flight — see decideSaveAction / the debounce
+  // effect below.
+  function finishSave() {
+    savingRef.current = false;
+    if (pendingRef.current) {
+      pendingRef.current = false;
+      doSave(new Set(paintedRef.current));
+    }
+  }
+
+  // One save attempt for `targetSlots` (the painted set at the moment it was
+  // scheduled — later changes are handled by their own debounce/trailing-save
+  // cycle, not by re-reading state here). `isRetry` marks the single silent
+  // retry after a failure; only a second failure surfaces the error state.
+  // The API is an idempotent full-replace, so an out-of-order response from
+  // an overlapping request is harmless either way.
+  async function doSave(targetSlots: Set<string>, isRetry = false) {
+    savingRef.current = true;
     setSaveState('saving');
-    setSaveError(null);
+
+    let ok = false;
     try {
       const res = await fetch(`/api/v1/public/events/${slug}/availability`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ slots: Array.from(painted) }),
+        body: JSON.stringify({ slots: Array.from(targetSlots) }),
       });
-
-      if (res.ok) {
-        setSavedSlots(new Set(painted));
-        setSaveState('saved');
-        router.refresh();
-        return;
-      }
-
-      const body: { error?: string; message?: string } | null = await res.json().catch(() => null);
-      const code = body?.error;
-      setSaveError((code && FRIENDLY_ERROR[code]) ?? body?.message ?? 'Something went wrong. Try again.');
-      setSaveState('error');
+      ok = res.ok;
     } catch {
-      setSaveError('Network error. Try again.');
-      setSaveState('error');
+      ok = false;
     }
+
+    if (ok) {
+      setSavedSlots(new Set(targetSlots));
+      setSaveState('saved');
+      router.refresh();
+      finishSave();
+      return;
+    }
+
+    if (!isRetry) {
+      // Silent — the UI keeps showing "Saving…" through this wait.
+      setTimeout(() => doSave(targetSlots, true), RETRY_DELAY_MS);
+      return;
+    }
+    setSaveState('error');
+    finishSave();
   }
+
+  function handleRetryClick() {
+    doSave(new Set(painted));
+  }
+
+  useEffect(() => {
+    doSaveRef.current = doSave;
+  });
 
   return (
     <section className="flex flex-col gap-4">
@@ -441,24 +548,19 @@ export function AvailabilityGrid({
       {effectiveMode === 'paint' && (
         <>
           <p className="avail-touch-hint text-pencil text-sm">Tap to toggle · hold, then drag to paint</p>
-          <div className="avail-actions flex flex-col gap-2">
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                className="btn btn-primary"
-                disabled={saveState === 'saving' || !dirty}
-                onClick={handleSave}
-              >
-                {saveState === 'saving' ? 'Saving…' : 'Save availability'}
-              </button>
-              {dirty && <span className="text-pencil text-sm">Unsaved changes</span>}
-              {!dirty && saveState === 'saved' && <span className="text-stamp text-sm">Saved ✓</span>}
-            </div>
-            {saveState === 'error' && saveError && (
+          <div className="avail-actions">
+            {saveState === 'error' ? (
               <p role="alert" className="error-strip">
-                {saveError}
+                Not saved —{' '}
+                <button type="button" className="btn-link" onClick={handleRetryClick}>
+                  Try again
+                </button>
               </p>
-            )}
+            ) : saveState === 'saving' ? (
+              <p className="text-pencil text-sm">Saving…</p>
+            ) : saveState === 'saved' ? (
+              <p className="text-pencil text-sm">Saved ✓</p>
+            ) : null}
           </div>
         </>
       )}

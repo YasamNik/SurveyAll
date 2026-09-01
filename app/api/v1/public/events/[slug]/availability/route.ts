@@ -11,7 +11,10 @@ const bodySchema = z.object({
   slots: z.array(z.string().max(40)).max(2000),
 });
 
-const isRateLimited = createRateLimiter();
+// Realtime autosave debounces at ~800ms per change, but a fast multi-stroke
+// painting session can still fire several PUTs a minute — raise the budget
+// here only (joins stay at the shared default of 10/60s).
+const isRateLimited = createRateLimiter(60_000, 30);
 
 export async function PUT(req: Request, { params }: { params: Promise<{ slug: string }> }) {
   const ipHash = ipHashFrom(req);
